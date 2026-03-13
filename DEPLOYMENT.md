@@ -69,7 +69,7 @@ Set these in the Railway service's **Variables** tab:
 | `S3_BUCKET`      | `genpos-assets`                                 | The R2 bucket name             |
 | `JWT_SECRET`     | *(random 64-char string)*                       | Generate with `openssl rand -hex 32` |
 | `OPENAI_API_KEY` | `sk-...`                                        | Your OpenAI API key            |
-| `CORS_ORIGINS`   | `["https://your-app.vercel.app"]`               | Your Vercel frontend URL       |
+| `CORS_ORIGINS`   | `https://your-app.vercel.app` or `["https://..."]` | Your Vercel frontend URL(s)   |
 | `PORT`           | `8000`                                          | Railway injects PORT           |
 
 ### How Deploys Work
@@ -157,7 +157,7 @@ npm run dev
 | `JWT_EXPIRE_MINUTES`| No       | `1440`                            | Token expiry (24h)             |
 | `OPENAI_API_KEY`    | Yes      | *(empty)*                         | OpenAI API key                 |
 | `TEMPORAL_HOST`     | No       | `localhost:7233`                  | Temporal server address        |
-| `CORS_ORIGINS`      | Yes      | `["http://localhost:3000"]`       | Allowed CORS origins (JSON)    |
+| `CORS_ORIGINS`      | Yes      | `["http://localhost:3000"]`       | Allowed CORS origins (URL or JSON array) |
 | `DEBUG`             | No       | `false`                           | Enable debug logging           |
 | `PORT`              | No       | `8000`                            | Server port (Railway sets this)|
 
@@ -180,8 +180,7 @@ If the frontend shows this error when opening the app:
 
 2. **CORS**  
    In Railway → API service → Variables, set:
-   - `CORS_ORIGINS` = your Vercel frontend URL, e.g. `https://gen-pos-xxx.vercel.app` or your custom domain.  
-   Use a JSON array of one string if needed, e.g. `["https://your-app.vercel.app"]`. Without this, the browser blocks the response and the app reports a connection error.
+   - `CORS_ORIGINS` = your Vercel frontend URL, e.g. `https://gen-pos-xxx.vercel.app` (a single URL is fine; you can also use a JSON array like `["https://your-app.vercel.app"]` or comma-separated URLs). Without this, the browser blocks the response and the app reports a connection error.
 
 3. **First-time setup: create a merchant**  
    If the API is reachable but returns "No merchant in database", call once:

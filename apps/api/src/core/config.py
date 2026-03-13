@@ -1,4 +1,9 @@
-from pydantic import model_validator
+from __future__ import annotations
+
+import json
+from typing import Union
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -23,7 +28,22 @@ class Settings(BaseSettings):
     temporal_host: str = "localhost:7233"
     temporal_namespace: str = "genpos"
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Union[str, list[str]] = ["http://localhost:3000"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> list[str]:
+        """Accept JSON array or a single URL / comma-separated URLs (env: CORS_ORIGINS)."""
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return ["http://localhost:3000"]
+            if v.startswith("["):
+                return json.loads(v)
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return ["http://localhost:3000"]
 
     @model_validator(mode="after")
     def normalize_database_url(self) -> "Settings":
