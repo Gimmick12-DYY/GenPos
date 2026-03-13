@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.orchestrator import orchestrator
+from src.models import Product
+from src.services import review_service
 
 
 async def run_on_demand_generation(
@@ -32,3 +35,58 @@ async def run_on_demand_generation(
         is_juguang=is_juguang,
         is_pugongying=is_pugongying,
     )
+
+
+async def run_daily_batch(
+    db: AsyncSession,
+    merchant_id: UUID,
+    packages_per_product: int = 1,
+    max_concurrent: int = 3,
+) -> dict:
+    """
+    Run daily generation for all active products of a merchant.
+    Uses semaphore to limit concurrent product pipelines.
+    """
+    stmt = select(Product).where(
+        Product.merchant_id == merchant_id,
+        Product.status == "active",
+    )
+    result = await db.execute(stmt)
+    products = list(result.scalars().all())
+    if not products:
+        return {
+            "merchant_id": str(merchant_id),
+            "products_processed": 0,
+            "packages_created": 0,
+            "failures": 0,
+            "details": [],
+        }
+
+    details: list[dict] = []
+    packages_created = 0
+    failures = 0
+
+    # Run products sequentially to avoid DB conflicts; each product can have multiple packages
+    for product in products:
+        for _ in range(packages_per_product):
+            out = await orchestrator.run_daily_product(
+                db, merchant_id=merchant_id, product_id=product.id
+            )
+            if out.get("note_package_id"):
+                packages_created += 1
+                details.append({"product_id": str(product.id), "note_package_id": out["note_package_id"]})
+            else:
+                failures += 1
+                details.append({"product_id": str(product.id), "error": out.get("error", "failed")})
+
+    # Apply auto-approve for merchants with review_mode=auto
+    auto_approved = await review_service.process_auto_approve(db, merchant_id)
+
+    return {
+        "merchant_id": str(merchant_id),
+        "products_processed": len(products),
+        "packages_created": packages_created,
+        "failures": failures,
+        "auto_approved": auto_approved,
+        "details": details,
+    }

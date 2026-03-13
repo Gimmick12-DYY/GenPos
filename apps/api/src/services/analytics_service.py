@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import csv
+import io
+from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -8,6 +11,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import NotePackage, PerformanceMetrics, Product
 from src.schemas import MetricsIngestRequest
+
+
+def _parse_metrics_csv(content: bytes) -> list[dict]:
+    """Parse CSV with columns: note_package_id,date,impressions,clicks,saves,comments,cost,conversions,revenue."""
+    reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
+    rows = []
+    for row in reader:
+        try:
+            rows.append({
+                "note_package_id": UUID(row["note_package_id"]),
+                "date": date.fromisoformat(row["date"]),
+                "impressions": int(row.get("impressions", 0) or 0),
+                "clicks": int(row.get("clicks", 0) or 0),
+                "saves": int(row.get("saves", 0) or 0),
+                "comments": int(row.get("comments", 0) or 0),
+                "cost": float(row.get("cost", 0) or 0),
+                "conversions": int(row.get("conversions", 0) or 0),
+                "revenue": float(row.get("revenue", 0) or 0),
+            })
+        except (ValueError, KeyError):
+            continue
+    return rows
 
 
 async def ingest_metrics(
@@ -34,6 +59,36 @@ async def ingest_metrics(
     await db.commit()
     await db.refresh(metrics)
     return metrics
+
+
+async def ingest_metrics_csv(
+    db: AsyncSession, content: bytes
+) -> dict[str, int]:
+    """
+    Parse CSV and upsert performance metrics. CSV must have headers:
+    note_package_id,date,impressions,clicks,saves,comments,cost,conversions,revenue
+    """
+    rows = _parse_metrics_csv(content)
+    created = 0
+    updated = 0
+    for data in rows:
+        stmt = select(PerformanceMetrics).where(
+            PerformanceMetrics.note_package_id == data["note_package_id"],
+            PerformanceMetrics.date == data["date"],
+        )
+        existing = (await db.execute(stmt)).scalar_one_or_none()
+        if existing is not None:
+            for k, v in data.items():
+                setattr(existing, k, v)
+            updated += 1
+        else:
+            pkg = await db.get(NotePackage, data["note_package_id"])
+            if pkg is None:
+                continue
+            db.add(PerformanceMetrics(**data))
+            created += 1
+    await db.commit()
+    return {"created": created, "updated": updated}
 
 
 async def get_product_performance(db: AsyncSession, product_id: UUID) -> dict:

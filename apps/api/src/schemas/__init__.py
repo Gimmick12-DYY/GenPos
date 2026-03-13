@@ -31,8 +31,11 @@ from .review import (
 )
 from .export import ExportResponse
 from .analytics import (
+    FatigueDimensionResponse,
     MetricsIngestRequest,
+    MetricsUploadResponse,
     PerformanceResponse,
+    ProductFatigueResponse,
     ProductPerformanceResponse,
 )
 from .persona import PersonaCreate, PersonaListResponse, PersonaResponse, PersonaUpdate
@@ -92,8 +95,11 @@ __all__ = [
     # export
     "ExportResponse",
     # analytics
+    "FatigueDimensionResponse",
     "MetricsIngestRequest",
+    "MetricsUploadResponse",
     "PerformanceResponse",
+    "ProductFatigueResponse",
     "ProductPerformanceResponse",
     # persona
     "PersonaCreate",

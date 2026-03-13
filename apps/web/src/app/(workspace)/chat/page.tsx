@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { ensureAuth, getMerchantId } from "@/lib/auth";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+}
+
+interface NotePackageFromApi {
+  id: string;
+  ranking_score?: number | null;
+  style_family?: string | null;
+  compliance_status: string;
+  review_status: string;
 }
 
 const welcomeMessage: Message = {
@@ -23,8 +33,16 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    ensureAuth()
+      .then(() => setAuthReady(true))
+      .catch((e) => setAuthError(e.message));
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -33,10 +51,10 @@ export default function ChatPage() {
     });
   }, [messages, isTyping]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || !authReady) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -44,23 +62,48 @@ export default function ChatPage() {
       content: text,
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+    setAuthError(null);
 
-    // Simulated AI response
-    setTimeout(() => {
+    try {
+      const merchantId = getMerchantId();
+      if (!merchantId) throw new Error("未获取到商户信息，请刷新重试");
+
+      const data = await api.post<{
+        response: string;
+        intent?: string | null;
+        note_packages?: Array<NotePackageFromApi & { id: string }> | null;
+      }>("/chat/message", { merchant_id: merchantId, message: text });
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content:
-          "收到！让我分析一下你的需求...\n\n基于当前小红书的热门趋势，我建议使用「治愈系插画」风格，搭配温柔种草的语气来呈现。这种组合在目标人群中的互动率最高。\n\n需要我直接生成完整的笔记方案吗？",
+        content: data.response || "请求已处理。",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      // If we had note_packages we could render them inline; API returns list or null
+      if (data.note_packages?.length) {
+        // Optional: append a system message or render cards below
+        // For now we just show the text response.
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请求失败，请重试";
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `生成过程遇到问题：${msg}`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -70,9 +113,22 @@ export default function ChatPage() {
     }
   }
 
+  if (authError && !authReady) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+          <p className="font-medium">无法连接后端</p>
+          <p className="mt-1">{authError}</p>
+          <p className="mt-2 text-stone-500">
+            请确认已创建商户并已启动 API 服务。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
           {messages.map((msg) => (
@@ -83,7 +139,6 @@ export default function ChatPage() {
                 msg.role === "user" ? "flex-row-reverse" : "flex-row",
               )}
             >
-              {/* Avatar */}
               <div
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
@@ -98,8 +153,6 @@ export default function ChatPage() {
                   <User className="h-4 w-4 text-stone-600" />
                 )}
               </div>
-
-              {/* Bubble */}
               <div
                 className={cn(
                   "max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
@@ -117,7 +170,6 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {/* Typing indicator */}
           {isTyping && (
             <div className="flex gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-light">
@@ -135,7 +187,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Input area */}
       <div className="border-t border-stone-200 bg-surface-raised px-4 py-4">
         <form
           onSubmit={handleSubmit}
@@ -154,7 +205,7 @@ export default function ChatPage() {
           </div>
           <button
             type="submit"
-            disabled={!input.trim() || isTyping}
+            disabled={!input.trim() || isTyping || !authReady}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-all hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="h-4.5 w-4.5" />

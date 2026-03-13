@@ -41,3 +41,23 @@ class ProductPerformanceResponse(BaseSchema):
     total_saves: int
     total_conversions: int
     metrics: list[PerformanceResponse]
+
+
+class MetricsUploadResponse(BaseSchema):
+    created: int
+    updated: int
+
+
+class FatigueDimensionResponse(BaseSchema):
+    dimension: str
+    value: str
+    fatigue_score: float
+    recent_impressions: int
+    baseline_impressions: int
+    recommendation: str
+
+
+class ProductFatigueResponse(BaseSchema):
+    product_id: str
+    dimensions: list[FatigueDimensionResponse]
+    threshold: float

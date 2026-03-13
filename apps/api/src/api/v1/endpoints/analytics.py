@@ -1,18 +1,34 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import verify_token
 from src.schemas import (
     MetricsIngestRequest,
+    MetricsUploadResponse,
     PerformanceResponse,
     ProductPerformanceResponse,
 )
 from src.services import analytics_service
 
 router = APIRouter()
+
+
+@router.post("/upload", response_model=MetricsUploadResponse)
+async def upload_metrics_csv(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """
+    Upload a CSV of performance metrics. Headers: note_package_id,date,impressions,clicks,saves,comments,cost,conversions,revenue
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    content = await file.read()
+    return await analytics_service.ingest_metrics_csv(db, content)
 
 
 @router.post(

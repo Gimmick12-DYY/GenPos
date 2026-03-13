@@ -27,6 +27,7 @@ from src.models import (
     TextAsset,
     ImageAsset,
 )
+from src.services import analytics_service, fatigue_service
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,113 @@ class GenerationOrchestrator:
             logger.exception("Pipeline error for merchant %s", merchant_id)
             return await self._fail_job(db, job, pipeline_log, str(e))
 
+    async def run_daily_product(
+        self,
+        db: AsyncSession,
+        merchant_id: UUID,
+        product_id: UUID,
+        objective: str = "seeding",
+    ) -> dict:
+        """
+        Run pipeline for daily-auto mode: no Copilot, structured_job from product.
+        Returns same shape as run_on_demand (generation_job_id, note_package_id, etc.).
+        """
+        ctx = await self._build_context(
+            db, merchant_id, product_id,
+            user_message="",
+            objective=objective,
+            persona="",
+            style_preference="",
+            special_instructions="",
+        )
+        # Build structured_job from product for planner
+        product = await db.get(Product, product_id)
+        if not product:
+            return {"error": "Product not found"}
+        ctx.structured_job = {
+            "product_id": str(product_id),
+            "product_name": product.name,
+            "product_category": product.category or "",
+            "product_description": product.description or "",
+            "objective": objective,
+            "persona": "",
+            "style_preference": "",
+            "special_instructions": "",
+            "is_juguang": False,
+            "is_pugongying": False,
+        }
+
+        # BL-204: Inject performance summary and fatigue for strategy diversification
+        try:
+            perf = await analytics_service.get_product_performance(db, product_id)
+            ctx.performance_summary = (
+                f"近30日表现：曝光{perf.get('total_impressions', 0)}，"
+                f"点击{perf.get('total_clicks', 0)}，收藏{perf.get('total_saves', 0)}，"
+                f"转化{perf.get('total_conversions', 0)}。"
+            )
+        except Exception:
+            ctx.performance_summary = ""
+        try:
+            fatigue_data = await fatigue_service.get_product_fatigue(db, product_id)
+            ctx.fatigue_signals = fatigue_data.get("dimensions", [])
+        except Exception:
+            ctx.fatigue_signals = []
+
+        job = GenerationJob(
+            merchant_id=merchant_id,
+            source_mode="daily_auto",
+            trigger_type="scheduler",
+            status="running",
+        )
+        db.add(job)
+        await db.flush()
+        ctx.job_id = job.id
+        pipeline_log: list[dict] = []
+
+        try:
+            # Planner
+            planner_result = await self._run_agent_task(
+                db, job.id, self.planner, ctx, "strategy", "strategy_planner"
+            )
+            pipeline_log.append({"agent": "strategy_planner", "success": planner_result.success})
+            if not planner_result.success:
+                return await self._fail_job(db, job, pipeline_log, planner_result.error or "Planner failed")
+
+            writer_task = self._run_agent_task(
+                db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer"
+            )
+            designer_task = self._run_agent_task(
+                db, job.id, self.designer, ctx, "image_gen", "cartoon_visual_designer"
+            )
+            writer_result, designer_result = await asyncio.gather(writer_task, designer_task)
+            pipeline_log.append({"agent": "xhs_note_writer", "success": writer_result.success})
+            pipeline_log.append({"agent": "cartoon_visual_designer", "success": designer_result.success})
+            if not writer_result.success:
+                return await self._fail_job(db, job, pipeline_log, writer_result.error or "Writer failed")
+
+            compliance_result = await self._run_agent_task(
+                db, job.id, self.compliance, ctx, "compliance", "compliance_reviewer"
+            )
+            pipeline_log.append({"agent": "compliance_reviewer", "success": compliance_result.success})
+
+            note_package = await self._persist_note_package(
+                db, ctx, job.id, merchant_id, product_id, source_mode="daily_auto"
+            )
+            await db.flush()
+
+            job.status = "completed"
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            return {
+                "generation_job_id": str(job.id),
+                "note_package_id": str(note_package.id),
+                "pipeline_log": pipeline_log,
+            }
+        except Exception as e:
+            logger.exception("Daily pipeline error for product %s", product_id)
+            return await self._fail_job(db, job, pipeline_log, str(e))
+
     # ------------------------------------------------------------------
     # Context building
     # ------------------------------------------------------------------
@@ -278,6 +386,7 @@ class GenerationOrchestrator:
         job_id: UUID,
         merchant_id: UUID,
         product_id: UUID,
+        source_mode: str = "on_demand",
     ) -> NotePackage:
         """Create NotePackage and child TextAsset / ImageAsset records."""
         compliance = ctx.compliance_report or {}
@@ -297,7 +406,7 @@ class GenerationOrchestrator:
             merchant_id=merchant_id,
             product_id=product_id,
             generation_job_id=job_id,
-            source_mode="on_demand",
+            source_mode=source_mode,
             objective=strategy.get("objective", "seeding"),
             persona=persona_value or "",
             style_family=strategy.get("style_family", ""),

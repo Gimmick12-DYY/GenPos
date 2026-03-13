@@ -33,6 +33,10 @@ class AgentContext:
     # Persona context (injected from team composition)
     persona_context: dict = field(default_factory=dict)
 
+    # Optional: performance history and fatigue (for daily strategy planning)
+    performance_summary: str = ""
+    fatigue_signals: list[dict] = field(default_factory=list)
+
     # Pipeline artifacts (populated as agents run)
     user_message: str = ""
     conversation_history: list[dict] = field(default_factory=list)

@@ -51,11 +51,14 @@ async def trigger_daily_generation(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    """Trigger daily generation pipeline (Phase 2)."""
-    return JSONResponse(
-        status_code=501,
-        content={"detail": "Daily generation pipeline not yet implemented"},
+    """Trigger daily generation for a merchant: all active products, 1 package per product (configurable)."""
+    result = await generation_service.run_daily_batch(
+        db,
+        merchant_id=body.merchant_id,
+        packages_per_product=1,
+        max_concurrent=1,
     )
+    return result
 
 
 @router.get("/jobs/{job_id}", response_model=GenerationJobResponse)

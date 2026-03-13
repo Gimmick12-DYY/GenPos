@@ -31,6 +31,21 @@ async def get_review_queue(
     return ReviewQueueResponse(items=items, total=total, limit=limit, offset=offset)
 
 
+@router.get("/queue/today", response_model=ReviewQueueResponse)
+async def get_review_queue_today(
+    merchant_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """Get today's recommendation queue (pending packages ranked by score)."""
+    items, total = await review_service.get_review_queue_today(
+        db, merchant_id=merchant_id, limit=limit, offset=offset
+    )
+    return ReviewQueueResponse(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.post("/{package_id}/approve", response_model=NotePackageResponse)
 async def approve_note_package(
     package_id: UUID,

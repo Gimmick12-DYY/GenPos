@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from src.api.v1.endpoints import (
     agent_teams,
     analytics,
+    auth,
     assets,
     chat,
     export,
@@ -16,6 +17,7 @@ from src.api.v1.endpoints import (
 
 api_router = APIRouter()
 
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(merchants.router, prefix="/merchants", tags=["merchants"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(assets.router, prefix="/asset-packs", tags=["assets"])

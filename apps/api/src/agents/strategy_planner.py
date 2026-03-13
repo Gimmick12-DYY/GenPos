@@ -143,6 +143,17 @@ class StrategyPlannerAgent(BaseAgent):
         if ctx.product_description:
             parts.append(f"- 产品描述：{ctx.product_description[:1000]}")
 
+        if ctx.performance_summary or ctx.fatigue_signals:
+            parts.append("\n## 历史表现与疲劳信号")
+            if ctx.performance_summary:
+                parts.append(ctx.performance_summary)
+            if ctx.fatigue_signals:
+                for sig in ctx.fatigue_signals:
+                    parts.append(
+                        f"- {sig.get('dimension', '')}={sig.get('value', '')}: "
+                        f"疲劳度{sig.get('fatigue_score', 0):.2f}，{sig.get('recommendation', '')}"
+                    )
+
         parts.append("\n## 商家规则")
         if ctx.merchant_rules:
             parts.append(f"- 行业：{ctx.merchant_industry or '未知'}")
