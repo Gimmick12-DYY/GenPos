@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import settings
-from src.models.base import Base
+from src.models import Base  # noqa: F401 — imports all models so metadata is populated
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
