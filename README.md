@@ -1,10 +1,10 @@
-# GenPos - XiaoHongShu AI Ads Workspace (小红书AI广告工作台)
+# GenPos - XiaoHongShu AI Ads Workspace
 
 An entrepreneur-facing creative operating system for XiaoHongShu marketing content generation.
 
 ## Overview
 
-GenPos is a production-grade, multi-tenant SaaS platform that automates the creation, review, and export of XiaoHongShu (小红书) advertising content. It uses AI agent teams to generate native-feeling note packages — including copy, titles, cover images, and hashtags — tailored to each merchant's brand, products, and target personas.
+GenPos is a production-grade, multi-tenant SaaS platform that automates the creation, review, and export of XiaoHongShu advertising content. It uses AI agent teams to generate native-feeling note packages — including copy, titles, cover images, and hashtags — tailored to each merchant's brand, products, and target personas.
 
 Key capabilities:
 
