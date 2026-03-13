@@ -169,7 +169,34 @@ npm run dev
 
 ---
 
-## 7. Migrating to Another Platform
+## 7. Troubleshooting: "无法连接后端" / "Failed to get dev token"
+
+If the frontend shows this error when opening the app:
+
+1. **Vercel env**  
+   In Vercel → Project → Settings → Environment Variables, set:
+   - `NEXT_PUBLIC_API_URL` = your Railway API URL **including** `/api/v1`, e.g. `https://your-app.up.railway.app` (no trailing slash).  
+   The app uses this as the base, so the full URL for auth is `NEXT_PUBLIC_API_URL/auth/dev-token`. If you use a custom domain for the API, use that. Redeploy the frontend after changing env vars.
+
+2. **CORS**  
+   In Railway → API service → Variables, set:
+   - `CORS_ORIGINS` = your Vercel frontend URL, e.g. `https://gen-pos-xxx.vercel.app` or your custom domain.  
+   Use a JSON array of one string if needed, e.g. `["https://your-app.vercel.app"]`. Without this, the browser blocks the response and the app reports a connection error.
+
+3. **First-time setup: create a merchant**  
+   If the API is reachable but returns "No merchant in database", call once:
+   ```bash
+   curl -X POST "https://YOUR-RAILWAY-API-URL/api/v1/auth/bootstrap" \
+     -H "Content-Type: application/json" -d '{}'
+   ```
+   Then reload the site; the frontend will get a dev token and work.
+
+4. **Railway API health**  
+   Open `https://YOUR-RAILWAY-API-URL/health` in a browser. You should see `{"status":"ok","service":"genpos-api"}`. If not, check Railway logs and that `DATABASE_URL` is set (private URL is fine).
+
+---
+
+## 8. Migrating to Another Platform
 
 This setup is fully portable:
 

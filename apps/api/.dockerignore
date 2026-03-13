@@ -1,0 +1,21 @@
+# Dependencies and local env
+.venv
+venv
+.env
+.env.*
+*.pyc
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Git / IDE
+.git
+.gitignore
+.cursor
+*.md
+
+# Tests and dev (keep Dockerfile and start.sh)
+tests
+*_test.py
+conftest.py
