@@ -1,0 +1,55 @@
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.database import get_db
+from src.core.security import verify_token
+from src.schemas import (
+    MetricsIngestRequest,
+    PerformanceResponse,
+    ProductPerformanceResponse,
+)
+from src.services import analytics_service
+
+router = APIRouter()
+
+
+@router.post(
+    "/ingest",
+    response_model=PerformanceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def ingest_metrics(
+    body: MetricsIngestRequest,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """Ingest XiaoHongShu performance metrics (upsert by note_package_id + date)."""
+    return await analytics_service.ingest_metrics(db, body)
+
+
+@router.get(
+    "/products/{product_id}/performance",
+    response_model=ProductPerformanceResponse,
+)
+async def get_product_performance(
+    product_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """Get aggregated performance metrics for a product across all its note packages."""
+    return await analytics_service.get_product_performance(db, product_id)
+
+
+@router.get(
+    "/note-packages/{package_id}/performance",
+    response_model=list[PerformanceResponse],
+)
+async def get_note_package_performance(
+    package_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """Get daily performance metrics for a specific note package."""
+    return await analytics_service.get_note_package_performance(db, package_id)

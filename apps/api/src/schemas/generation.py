@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from pydantic import Field
+
+from .common import BaseSchema
+
+
+class GenerationRequest(BaseSchema):
+    merchant_id: UUID
+    product_id: UUID | None = None
+    objective: str = Field(..., max_length=128)
+    persona: str | None = Field(default=None, max_length=128)
+    style_preference: str | None = Field(default=None, max_length=64)
+    special_instructions: str | None = None
+    is_juguang: bool = False
+    is_pugongying: bool = False
+
+
+class DailyRunRequest(BaseSchema):
+    merchant_id: UUID
+
+
+class GenerationJobResponse(BaseSchema):
+    id: UUID
+    merchant_id: UUID
+    source_mode: Literal["daily_auto", "on_demand", "campaign"]
+    trigger_type: Literal["scheduler", "user_request", "api"]
+    status: Literal["pending", "running", "completed", "failed", "cancelled"]
+    team_id: UUID | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class GenerationTaskResponse(BaseSchema):
+    id: UUID
+    job_id: UUID
+    task_type: Literal["strategy", "text_gen", "image_gen", "compliance", "ranking"]
+    status: Literal["pending", "running", "completed", "failed"]
+    agent_role: str | None
+    persona_id: UUID | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class TaskListResponse(BaseSchema):
+    tasks: list[GenerationTaskResponse]

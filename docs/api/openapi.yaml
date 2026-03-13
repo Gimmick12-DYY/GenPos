@@ -1,0 +1,3797 @@
+openapi: 3.1.0
+info:
+  title: GenPos — XiaoHongShu AI Ads Workspace API
+  version: 1.0.0
+  description: |
+    Production-grade, multi-tenant, China-first XiaoHongShu AI creative operating
+    system API. Enables merchants to manage products, generate XiaoHongShu-native
+    note packages via AI agent teams, review and export content for 笔记, 聚光,
+    and 蒲公英 surfaces, and track performance analytics.
+
+    ## Authentication
+    All endpoints require a valid Bearer JWT. The token embeds `tenant_id`,
+    `user_id`, and RBAC roles. Obtain tokens via the Identity & Tenant Service
+    (`/auth/token`).
+
+    ## Pagination
+    List endpoints support `limit` / `offset` query parameters. Default `limit`
+    is 20, max 100. Responses include a `pagination` object with `total`,
+    `limit`, `offset`, and `has_more`.
+
+    ## Multi-Tenancy
+    Tenant isolation is enforced at the gateway. The JWT `tenant_id` claim scopes
+    all data access — callers never need to pass a tenant parameter explicitly.
+  contact:
+    name: GenPos Engineering
+    email: engineering@genpos.ai
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+
+servers:
+  - url: https://api.genpos.ai/api/v1
+    description: Production
+  - url: https://staging-api.genpos.ai/api/v1
+    description: Staging
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Merchants
+    description: Merchant profile and configuration management
+  - name: Products
+    description: Product catalog management
+  - name: Asset Packs
+    description: Quarterly asset pack and asset management
+  - name: Generation
+    description: On-demand and daily content generation
+  - name: Note Packages
+    description: XiaoHongShu note package retrieval
+  - name: Review
+    description: Human review queue and approval workflow
+  - name: Export
+    description: Export bundles for 笔记, 聚光, and 蒲公英
+  - name: Analytics
+    description: Performance metrics ingestion and retrieval
+  - name: Personas
+    description: AI agent persona definitions
+  - name: Agent Teams
+    description: Agent team composition and experiments
+  - name: Agent Roles
+    description: Available agent role definitions
+  - name: Chat
+    description: Conversational AI interface
+
+# ---------------------------------------------------------------------------
+# PATHS
+# ---------------------------------------------------------------------------
+paths:
+
+  # =========================================================================
+  # MERCHANT ENDPOINTS
+  # =========================================================================
+
+  /merchants:
+    post:
+      operationId: createMerchant
+      tags: [Merchants]
+      summary: Create merchant
+      description: |
+        Provisions a new merchant within the current tenant. Sets up the
+        merchant profile with industry, XiaoHongShu account type, and
+        initial configuration. A default `MerchantRules` record is created
+        automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantCreate'
+      responses:
+        '201':
+          description: Merchant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /merchants/{id}:
+    parameters:
+      - $ref: '#/components/parameters/MerchantId'
+    get:
+      operationId: getMerchant
+      tags: [Merchants]
+      summary: Get merchant
+      description: Retrieve a merchant profile by ID.
+      responses:
+        '200':
+          description: Merchant found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateMerchant
+      tags: [Merchants]
+      summary: Update merchant
+      description: Partially update a merchant profile. Only supplied fields are changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantUpdate'
+      responses:
+        '200':
+          description: Merchant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /merchants/{id}/rules:
+    parameters:
+      - $ref: '#/components/parameters/MerchantId'
+    get:
+      operationId: getMerchantRules
+      tags: [Merchants]
+      summary: Get merchant rules
+      description: |
+        Retrieve the compliance and content rules configured for this merchant,
+        including tone presets, banned words, required and banned claims, and
+        review mode settings.
+      responses:
+        '200':
+          description: Merchant rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRules'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateMerchantRules
+      tags: [Merchants]
+      summary: Update merchant rules
+      description: Partially update merchant content and compliance rules.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantRulesUpdate'
+      responses:
+        '200':
+          description: Rules updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantRules'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # PRODUCT ENDPOINTS
+  # =========================================================================
+
+  /products:
+    post:
+      operationId: createProduct
+      tags: [Products]
+      summary: Create product
+      description: |
+        Add a new product to the merchant's catalog. Products represent
+        individual SKUs or product lines that will receive generated
+        XiaoHongShu content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /products/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      operationId: getProduct
+      tags: [Products]
+      summary: Get product
+      description: Retrieve a product by ID, including its current status and metadata.
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateProduct
+      tags: [Products]
+      summary: Update product
+      description: Partially update a product's profile. Only supplied fields are changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /merchants/{merchant_id}/products:
+    parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+    get:
+      operationId: listMerchantProducts
+      tags: [Products]
+      summary: List merchant products
+      description: |
+        List all products belonging to a merchant. Supports pagination and
+        optional status filtering.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProductStatus'
+          description: Filter by product status
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by product category
+      responses:
+        '200':
+          description: Paginated product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # ASSET PACK ENDPOINTS
+  # =========================================================================
+
+  /asset-packs:
+    post:
+      operationId: createAssetPack
+      tags: [Asset Packs]
+      summary: Create asset pack
+      description: |
+        Create a new quarterly asset pack for a merchant. The pack starts in
+        `draft` status and must be activated via a separate endpoint after
+        assets are uploaded and approved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetPackCreate'
+      responses:
+        '201':
+          description: Asset pack created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPack'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /asset-packs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AssetPackId'
+    get:
+      operationId: getAssetPack
+      tags: [Asset Packs]
+      summary: Get asset pack
+      description: Retrieve an asset pack by ID, including status and validity window.
+      responses:
+        '200':
+          description: Asset pack found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPack'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /asset-packs/{id}/assets:
+    parameters:
+      - $ref: '#/components/parameters/AssetPackId'
+    post:
+      operationId: uploadAsset
+      tags: [Asset Packs]
+      summary: Upload asset to pack
+      description: |
+        Upload a new asset (packshot, cutout, logo, or packaging reference)
+        to an asset pack. The file is stored in object storage and metadata
+        is recorded. The asset starts in `draft` approval status.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, WebP)
+                type:
+                  $ref: '#/components/schemas/AssetType'
+                product_id:
+                  type: string
+                  format: uuid
+                  description: Optional product association
+                metadata:
+                  type: string
+                  description: JSON-encoded metadata object
+      responses:
+        '201':
+          description: Asset uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      operationId: listAssetPackAssets
+      tags: [Asset Packs]
+      summary: List assets in pack
+      description: List all assets within an asset pack with optional type filtering.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/AssetType'
+          description: Filter by asset type
+        - name: approval_status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApprovalStatus'
+          description: Filter by approval status
+      responses:
+        '200':
+          description: Paginated asset list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /asset-packs/{id}/activate:
+    parameters:
+      - $ref: '#/components/parameters/AssetPackId'
+    post:
+      operationId: activateAssetPack
+      tags: [Asset Packs]
+      summary: Activate asset pack
+      description: |
+        Transition the asset pack from `draft` to `active`. Requires at
+        least one approved packshot asset. Previously active packs for the
+        same merchant are automatically archived.
+      responses:
+        '200':
+          description: Asset pack activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPack'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: |
+            Activation preconditions not met (e.g., no approved packshots).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # GENERATION ENDPOINTS
+  # =========================================================================
+
+  /generate/request:
+    post:
+      operationId: generateOnDemand
+      tags: [Generation]
+      summary: On-demand generation request
+      description: |
+        Submit an on-demand generation request. The system assembles the
+        active agent team, runs the full pipeline (research → copy → visual →
+        compliance → ranking), and returns ranked note packages. The response
+        is a `GenerationJob` with a tracking ID; poll `/generation-jobs/{id}`
+        for status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationRequest'
+      responses:
+        '202':
+          description: Generation job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /generate/daily/run:
+    post:
+      operationId: triggerDailyGeneration
+      tags: [Generation]
+      summary: Trigger daily generation
+      description: |
+        Manually trigger the daily generation pipeline for a merchant. Normally
+        this runs on a cron schedule, but operators can invoke it on-demand for
+        testing or catch-up. Requires `admin` or `owner` role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailyGenerationTrigger'
+      responses:
+        '202':
+          description: Daily generation job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /generation-jobs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/GenerationJobId'
+    get:
+      operationId: getGenerationJob
+      tags: [Generation]
+      summary: Get job status
+      description: |
+        Retrieve the current status of a generation job including progress,
+        task counts, and timestamps. Poll this endpoint to track long-running
+        generation workflows.
+      responses:
+        '200':
+          description: Generation job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJob'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /generation-jobs/{id}/tasks:
+    parameters:
+      - $ref: '#/components/parameters/GenerationJobId'
+    get:
+      operationId: listGenerationTasks
+      tags: [Generation]
+      summary: List tasks in job
+      description: |
+        List individual tasks within a generation job. Each task represents
+        a discrete step in the pipeline (research, copy, visual, compliance,
+        ranking). Useful for debugging and observability.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+          description: Filter by task status
+        - name: task_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskType'
+          description: Filter by task type
+      responses:
+        '200':
+          description: Paginated task list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationTaskList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/regenerate:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: regenerateNotePackage
+      tags: [Generation]
+      summary: Regenerate a note package
+      description: |
+        Re-run the generation pipeline for an existing note package, producing
+        a new version. The original package is preserved. Optional overrides
+        allow the merchant to adjust style, tone, or audience for the
+        regenerated version.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegenerateRequest'
+      responses:
+        '202':
+          description: Regeneration job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # NOTE PACKAGE ENDPOINTS
+  # =========================================================================
+
+  /note-packages/{id}:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    get:
+      operationId: getNotePackage
+      tags: [Note Packages]
+      summary: Get note package
+      description: |
+        Retrieve a complete note package by ID, including text assets, image
+        asset references, compliance status, and ranking score.
+      responses:
+        '200':
+          description: Note package found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotePackage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /merchants/{merchant_id}/note-packages:
+    parameters:
+      - $ref: '#/components/parameters/MerchantIdPath'
+    get:
+      operationId: listMerchantNotePackages
+      tags: [Note Packages]
+      summary: List note packages
+      description: |
+        List all note packages for a merchant with filtering by status,
+        source mode, product, objective, and date range.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/NotePackageStatus'
+          description: Filter by lifecycle status
+        - name: review_status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReviewStatus'
+          description: Filter by review status
+        - name: source_mode
+          in: query
+          schema:
+            $ref: '#/components/schemas/SourceMode'
+          description: Filter by generation source mode
+        - name: product_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by product
+        - name: objective
+          in: query
+          schema:
+            $ref: '#/components/schemas/Objective'
+          description: Filter by marketing objective
+        - name: created_after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only packages created after this timestamp
+        - name: created_before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only packages created before this timestamp
+      responses:
+        '200':
+          description: Paginated note package list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotePackageList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/text-assets:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    get:
+      operationId: getNotePackageTextAssets
+      tags: [Note Packages]
+      summary: Get text assets
+      description: |
+        Retrieve all text assets (title variants, body variants, first comment,
+        hashtags) belonging to a note package.
+      responses:
+        '200':
+          description: Text assets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [note_package_id, text_assets]
+                properties:
+                  note_package_id:
+                    type: string
+                    format: uuid
+                  text_assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TextAsset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/image-assets:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    get:
+      operationId: getNotePackageImageAssets
+      tags: [Note Packages]
+      summary: Get image assets
+      description: |
+        Retrieve all image assets (cover, carousel images) belonging to a
+        note package, including generation metadata and CDN URLs.
+      responses:
+        '200':
+          description: Image assets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [note_package_id, image_assets]
+                properties:
+                  note_package_id:
+                    type: string
+                    format: uuid
+                  image_assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImageAsset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # REVIEW ENDPOINTS
+  # =========================================================================
+
+  /review/queue:
+    get:
+      operationId: getReviewQueue
+      tags: [Review]
+      summary: Get review queue
+      description: |
+        Retrieve the current review queue — note packages awaiting human
+        approval. Sorted by ranking score descending by default. Supports
+        filtering by compliance flag status and product.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: merchant_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Merchant whose queue to retrieve
+        - name: product_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by product
+        - name: compliance_flagged
+          in: query
+          schema:
+            type: boolean
+          description: If true, only show compliance-flagged packages
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [ranking_score, created_at]
+            default: ranking_score
+          description: Sort field
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort direction
+      responses:
+        '200':
+          description: Review queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotePackageList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: approveNotePackage
+      tags: [Review]
+      summary: Approve note package
+      description: |
+        Approve a note package. Transitions the review status to `approved`.
+        Optionally specify selected title/body variants and a scheduled
+        publish date.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+      responses:
+        '200':
+          description: Note package approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: rejectNotePackage
+      tags: [Review]
+      summary: Reject note package
+      description: |
+        Reject a note package with a mandatory reason. Rejection events feed
+        the learning loop to improve future generation quality.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+      responses:
+        '200':
+          description: Note package rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # EXPORT ENDPOINTS
+  # =========================================================================
+
+  /note-packages/{id}/export/note:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: exportNoteBundleXHS
+      tags: [Export]
+      summary: Export note bundle
+      description: |
+        Package the approved note package into a XiaoHongShu 笔记-ready export
+        bundle. Includes final images at required dimensions (1080×1440 for
+        cover, carousel images), formatted copy with character-count validation,
+        hashtags, and first-comment text.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteExportOptions'
+      responses:
+        '200':
+          description: Note export bundle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteExportBundle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/export/juguang:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: exportJuguangBundle
+      tags: [Export]
+      summary: Export 聚光 bundle
+      description: |
+        Package the approved note package into a 聚光 (Spotlight) paid
+        promotion bundle. Includes paid-optimized title/copy, cover
+        variations at required aspect ratios (3:4, 1:1), objective tags,
+        CTA emphasis, and operator notes.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JuguangExportOptions'
+      responses:
+        '200':
+          description: 聚光 export bundle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JuguangExportBundle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/export/pugongying:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    post:
+      operationId: exportPugongyingBundle
+      tags: [Export]
+      summary: Export 蒲公英 bundle
+      description: |
+        Package the approved note package into a 蒲公英 (Dandelion) creator
+        collaboration brief. Includes the creator brief, target audience,
+        must-say points, taboo points, visual reference guidance, and expected
+        style direction.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PugongyingExportOptions'
+      responses:
+        '200':
+          description: 蒲公英 export bundle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PugongyingExportBundle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # ANALYTICS ENDPOINTS
+  # =========================================================================
+
+  /metrics/ingest:
+    post:
+      operationId: ingestMetrics
+      tags: [Analytics]
+      summary: Ingest performance metrics
+      description: |
+        Ingest XiaoHongShu performance data for published note packages.
+        Accepts batch payloads for efficient ingestion. Data feeds the
+        ranking model and fatigue scoring system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsIngestBatch'
+      responses:
+        '202':
+          description: Metrics accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, failed]
+                properties:
+                  accepted:
+                    type: integer
+                    description: Number of metric records accepted
+                  failed:
+                    type: integer
+                    description: Number of records that failed validation
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        reason:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /products/{id}/performance:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      operationId: getProductPerformance
+      tags: [Analytics]
+      summary: Product performance
+      description: |
+        Retrieve aggregated performance metrics for a product across all
+        its published note packages. Supports date range filtering and
+        breakdown by source mode or objective.
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start of the reporting period (inclusive)
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End of the reporting period (inclusive)
+        - name: breakdown_by
+          in: query
+          schema:
+            type: string
+            enum: [source_mode, objective, style_family, day]
+          description: Dimension to break down metrics by
+      responses:
+        '200':
+          description: Product performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPerformanceReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /note-packages/{id}/performance:
+    parameters:
+      - $ref: '#/components/parameters/NotePackageId'
+    get:
+      operationId: getNotePackagePerformance
+      tags: [Analytics]
+      summary: Note package performance
+      description: |
+        Retrieve daily performance metrics for a specific note package.
+        Includes engagement, conversion, cost, and computed fatigue score.
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start of the reporting period
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End of the reporting period
+      responses:
+        '200':
+          description: Note package performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotePackagePerformanceReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # PERSONA ENDPOINTS
+  # =========================================================================
+
+  /personas:
+    post:
+      operationId: createPersona
+      tags: [Personas]
+      summary: Create persona
+      description: |
+        Create a new AI agent persona definition. Personas define the
+        behavioral profile (tone, vocabulary, risk appetite, cultural
+        references) that shapes how an agent role operates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonaCreate'
+      responses:
+        '201':
+          description: Persona created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Persona'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      operationId: listPersonas
+      tags: [Personas]
+      summary: List personas
+      description: List all personas accessible to the current tenant.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        '200':
+          description: Paginated persona list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonaList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /personas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PersonaId'
+    get:
+      operationId: getPersona
+      tags: [Personas]
+      summary: Get persona
+      description: Retrieve a persona definition by ID.
+      responses:
+        '200':
+          description: Persona found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Persona'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updatePersona
+      tags: [Personas]
+      summary: Update persona
+      description: |
+        Partially update a persona definition. Creates a new version; the
+        previous version is preserved for auditability. If the persona is
+        currently referenced by an active team, the update creates a new
+        version without affecting in-flight generation runs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonaUpdate'
+      responses:
+        '200':
+          description: Persona updated (new version created)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Persona'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # AGENT TEAM ENDPOINTS
+  # =========================================================================
+
+  /agent-teams:
+    post:
+      operationId: createAgentTeam
+      tags: [Agent Teams]
+      summary: Create agent team
+      description: |
+        Create a new agent team composition. Teams define the set of agent
+        roles, their persona bindings, execution order, and collaboration
+        graph. A team can be merchant-specific or a shared template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentTeamCreate'
+      responses:
+        '201':
+          description: Agent team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTeam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      operationId: listAgentTeams
+      tags: [Agent Teams]
+      summary: List agent teams
+      description: |
+        List all agent teams. Returns both merchant-specific teams and
+        shared platform templates.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: merchant_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by merchant (null returns shared templates)
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        '200':
+          description: Paginated agent team list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTeamList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agent-teams/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentTeamId'
+    get:
+      operationId: getAgentTeam
+      tags: [Agent Teams]
+      summary: Get agent team
+      description: |
+        Retrieve an agent team by ID, including all member role-persona
+        bindings and the collaboration graph.
+      responses:
+        '200':
+          description: Agent team found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTeam'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateAgentTeam
+      tags: [Agent Teams]
+      summary: Update agent team
+      description: |
+        Partially update an agent team. Updates create a new version; the
+        previous version is preserved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentTeamUpdate'
+      responses:
+        '200':
+          description: Agent team updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTeam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agent-teams/{id}/members:
+    parameters:
+      - $ref: '#/components/parameters/AgentTeamId'
+    post:
+      operationId: addTeamMember
+      tags: [Agent Teams]
+      summary: Add team member
+      description: |
+        Add a new agent role-persona binding to the team. The role must be a
+        valid agent role; the persona must be an active persona definition.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentTeamMemberCreate'
+      responses:
+        '201':
+          description: Team member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTeamMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agent-teams/{id}/members/{member_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentTeamId'
+      - name: member_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Team member ID
+    delete:
+      operationId: removeTeamMember
+      tags: [Agent Teams]
+      summary: Remove team member
+      description: |
+        Remove an agent role-persona binding from the team. Cannot remove
+        members marked as `is_required` unless the role is reassigned first.
+      responses:
+        '204':
+          description: Team member removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot remove a required team member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agent-teams/{id}/experiments:
+    parameters:
+      - $ref: '#/components/parameters/AgentTeamId'
+    post:
+      operationId: createPersonaExperiment
+      tags: [Agent Teams]
+      summary: Create persona experiment
+      description: |
+        Create an A/B experiment comparing different persona configurations
+        within a team. The experiment generates content using both the control
+        and variant team configurations, and tracks performance outcomes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonaExperimentCreate'
+      responses:
+        '201':
+          description: Experiment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonaExperiment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # AGENT ROLE ENDPOINTS
+  # =========================================================================
+
+  /agent-roles:
+    get:
+      operationId: listAgentRoles
+      tags: [Agent Roles]
+      summary: List available agent roles
+      description: |
+        List all platform-defined agent roles available for team composition.
+        Roles define operational responsibilities (tools, input/output schemas,
+        pipeline position) and are owned by the platform engineering team.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Agent role list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRoleList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # CHAT ENDPOINT
+  # =========================================================================
+
+  /chat/message:
+    post:
+      operationId: sendChatMessage
+      tags: [Chat]
+      summary: Send chat message (streaming)
+      description: |
+        Send a natural-language message to the Founder Copilot agent. The
+        response streams back via Server-Sent Events (SSE). The agent
+        interprets the request, may invoke generation pipelines, and returns
+        conversational responses interleaved with structured artifacts
+        (note packages, image previews, etc.).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatMessageRequest'
+      responses:
+        '200':
+          description: Streaming response via SSE
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ChatSSEEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ===========================================================================
+# COMPONENTS
+# ===========================================================================
+components:
+
+  # -------------------------------------------------------------------------
+  # SECURITY SCHEMES
+  # -------------------------------------------------------------------------
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        RS256-signed JWT. Claims include `sub` (user ID), `tenant_id`,
+        `roles` (array of RBAC roles: owner, admin, editor, viewer), and
+        standard `exp`/`iat`/`iss` fields. Tokens are issued by the Identity
+        & Tenant Service.
+
+  # -------------------------------------------------------------------------
+  # PARAMETERS
+  # -------------------------------------------------------------------------
+  parameters:
+    MerchantId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Merchant UUID
+
+    MerchantIdPath:
+      name: merchant_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Merchant UUID
+
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Product UUID
+
+    AssetPackId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset pack UUID
+
+    NotePackageId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Note package UUID
+
+    GenerationJobId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Generation job UUID
+
+    PersonaId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Persona UUID
+
+    AgentTeamId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Agent team UUID
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Maximum number of items to return
+
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Number of items to skip
+
+  # -------------------------------------------------------------------------
+  # REUSABLE RESPONSES
+  # -------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: Invalid request syntax or malformed parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Missing, expired, or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    UnprocessableEntity:
+      description: Request semantically invalid (validation failure)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  # -------------------------------------------------------------------------
+  # SCHEMAS
+  # -------------------------------------------------------------------------
+  schemas:
+
+    # -----------------------------------------------------------------------
+    # SHARED / UTILITY
+    # -----------------------------------------------------------------------
+    Pagination:
+      type: object
+      required: [total, limit, offset, has_more]
+      properties:
+        total:
+          type: integer
+          description: Total number of matching records
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              examples: ['MERCHANT_NOT_FOUND']
+            message:
+              type: string
+              description: Human-readable error description
+            request_id:
+              type: string
+              format: uuid
+              description: Correlation ID for debugging
+
+    ValidationErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              examples: ['VALIDATION_ERROR']
+            message:
+              type: string
+            request_id:
+              type: string
+              format: uuid
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                    description: JSON path to the invalid field
+                  message:
+                    type: string
+                  type:
+                    type: string
+                    description: Validation rule that failed
+
+    # -----------------------------------------------------------------------
+    # ENUMS
+    # -----------------------------------------------------------------------
+    XhsAccountType:
+      type: string
+      enum: [personal, professional, enterprise]
+
+    ProductStatus:
+      type: string
+      enum: [active, inactive, archived]
+
+    AssetPackStatus:
+      type: string
+      enum: [draft, active, archived]
+
+    AssetType:
+      type: string
+      enum: [packshot, cutout, logo, packaging_ref, hero, supplementary]
+
+    ApprovalStatus:
+      type: string
+      enum: [draft, pending_review, approved, archived]
+
+    SourceMode:
+      type: string
+      enum: [daily_auto, on_demand, guided_campaign]
+
+    Objective:
+      type: string
+      enum: [seeding, conversion, brand_awareness, event_traffic]
+
+    Channel:
+      type: string
+      enum: [organic, juguang, pugongying]
+
+    StyleFamily:
+      type: string
+      enum: [watercolor, flat_vector, pixel_art, collage, minimal_line, pop_art]
+
+    NotePackageStatus:
+      type: string
+      enum: [draft, pending_review, approved, rejected, published, archived]
+
+    ReviewStatus:
+      type: string
+      enum: [pending, approved, rejected]
+
+    ComplianceStatus:
+      type: string
+      enum: [pending, passed, flagged, failed]
+
+    JobStatus:
+      type: string
+      enum: [pending, running, completed, failed, cancelled]
+
+    TaskStatus:
+      type: string
+      enum: [pending, running, completed, failed, skipped]
+
+    TaskType:
+      type: string
+      enum: [research, copy_generation, visual_generation, compliance_check, ranking, packaging]
+
+    TriggerType:
+      type: string
+      enum: [scheduled, manual, on_demand, regeneration]
+
+    TextAssetRole:
+      type: string
+      enum: [title, body, first_comment, hashtag_set, cta_text]
+
+    ImageAssetRole:
+      type: string
+      enum: [cover, carousel, infographic, comparison]
+
+    ReviewAction:
+      type: string
+      enum: [approved, rejected]
+
+    ComplianceLevel:
+      type: string
+      enum: [standard, strict, permissive]
+
+    ReviewMode:
+      type: string
+      enum: [manual, auto_approve_high_score, auto_approve_all]
+
+    CtaType:
+      type: string
+      enum: [click_link, search_keyword, direct_message, visit_store, no_cta]
+
+    TonePreset:
+      type: string
+      enum: [casual, professional, seeding, bestie_chat, review_style, luxury, playful]
+
+    # -----------------------------------------------------------------------
+    # MERCHANT
+    # -----------------------------------------------------------------------
+    MerchantCreate:
+      type: object
+      required: [name, industry]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: Merchant display name
+        industry:
+          type: string
+          maxLength: 100
+          description: Industry vertical (e.g., 美妆, 食品, 母婴)
+        xhs_account_type:
+          $ref: '#/components/schemas/XhsAccountType'
+        uses_juguang:
+          type: boolean
+          default: false
+          description: Whether the merchant uses 聚光 paid promotion
+        uses_pugongying:
+          type: boolean
+          default: false
+          description: Whether the merchant uses 蒲公英 creator collaborations
+        language:
+          type: string
+          default: zh-CN
+          description: Primary content language (BCP 47)
+        timezone:
+          type: string
+          default: Asia/Shanghai
+          description: IANA timezone for scheduling
+
+    MerchantUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        industry:
+          type: string
+          maxLength: 100
+        xhs_account_type:
+          $ref: '#/components/schemas/XhsAccountType'
+        uses_juguang:
+          type: boolean
+        uses_pugongying:
+          type: boolean
+        language:
+          type: string
+        timezone:
+          type: string
+
+    Merchant:
+      type: object
+      required: [id, name, industry, xhs_account_type, uses_juguang, uses_pugongying, language, timezone, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        industry:
+          type: string
+        xhs_account_type:
+          $ref: '#/components/schemas/XhsAccountType'
+        uses_juguang:
+          type: boolean
+        uses_pugongying:
+          type: boolean
+        language:
+          type: string
+        timezone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # -----------------------------------------------------------------------
+    # MERCHANT RULES
+    # -----------------------------------------------------------------------
+    MerchantRulesUpdate:
+      type: object
+      properties:
+        tone_preset:
+          $ref: '#/components/schemas/TonePreset'
+        banned_words:
+          type: array
+          items:
+            type: string
+          description: Words that must never appear in generated content
+        required_claims:
+          type: array
+          items:
+            type: string
+          description: Claims/selling points that must appear in generated content
+        banned_claims:
+          type: array
+          items:
+            type: string
+          description: Claims that must never appear
+        compliance_level:
+          $ref: '#/components/schemas/ComplianceLevel'
+        review_mode:
+          $ref: '#/components/schemas/ReviewMode'
+        auto_approve_threshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Minimum ranking score for auto-approval (when review_mode allows)
+        daily_generation_count:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Number of note packages to generate per product per day
+        daily_generation_time:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+          description: Time of day to run daily generation (HH:MM in merchant timezone)
+
+    MerchantRules:
+      type: object
+      required: [merchant_id, tone_preset, banned_words, required_claims, banned_claims, compliance_level, review_mode, daily_generation_count, daily_generation_time, updated_at]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        tone_preset:
+          $ref: '#/components/schemas/TonePreset'
+        banned_words:
+          type: array
+          items:
+            type: string
+        required_claims:
+          type: array
+          items:
+            type: string
+        banned_claims:
+          type: array
+          items:
+            type: string
+        compliance_level:
+          $ref: '#/components/schemas/ComplianceLevel'
+        review_mode:
+          $ref: '#/components/schemas/ReviewMode'
+        auto_approve_threshold:
+          type: number
+          format: float
+          nullable: true
+        daily_generation_count:
+          type: integer
+        daily_generation_time:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    # -----------------------------------------------------------------------
+    # PRODUCT
+    # -----------------------------------------------------------------------
+    ProductCreate:
+      type: object
+      required: [merchant_id, name, category]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+        category:
+          type: string
+          maxLength: 100
+          description: Product category (e.g., 防晒霜, 面膜, 零食)
+        description:
+          type: string
+          maxLength: 2000
+        primary_objective:
+          $ref: '#/components/schemas/Objective'
+        selling_points:
+          type: array
+          items:
+            type: string
+          description: Key selling points for this product
+        target_audiences:
+          type: array
+          items:
+            type: string
+          description: Target audience descriptions
+        price:
+          type: number
+          format: float
+          description: Product price in CNY
+        price_display:
+          type: string
+          description: Formatted price string for display (e.g., ¥99)
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        category:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+        primary_objective:
+          $ref: '#/components/schemas/Objective'
+        selling_points:
+          type: array
+          items:
+            type: string
+        target_audiences:
+          type: array
+          items:
+            type: string
+        price:
+          type: number
+          format: float
+        price_display:
+          type: string
+
+    Product:
+      type: object
+      required: [id, merchant_id, name, category, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+        primary_objective:
+          $ref: '#/components/schemas/Objective'
+          nullable: true
+        selling_points:
+          type: array
+          items:
+            type: string
+        target_audiences:
+          type: array
+          items:
+            type: string
+        price:
+          type: number
+          format: float
+          nullable: true
+        price_display:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # -----------------------------------------------------------------------
+    # ASSET PACK
+    # -----------------------------------------------------------------------
+    AssetPackCreate:
+      type: object
+      required: [merchant_id, quarter_label]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        quarter_label:
+          type: string
+          pattern: '^\d{4}_Q[1-4]$'
+          description: Quarter label (e.g., 2026_Q2)
+        effective_from:
+          type: string
+          format: date
+        effective_to:
+          type: string
+          format: date
+
+    AssetPack:
+      type: object
+      required: [id, merchant_id, quarter_label, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchant_id:
+          type: string
+          format: uuid
+        quarter_label:
+          type: string
+        status:
+          $ref: '#/components/schemas/AssetPackStatus'
+        effective_from:
+          type: string
+          format: date
+          nullable: true
+        effective_to:
+          type: string
+          format: date
+          nullable: true
+        asset_count:
+          type: integer
+          description: Total number of assets in this pack
+        approved_asset_count:
+          type: integer
+          description: Number of approved assets
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # -----------------------------------------------------------------------
+    # ASSET
+    # -----------------------------------------------------------------------
+    Asset:
+      type: object
+      required: [id, asset_pack_id, type, storage_url, approval_status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_pack_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          $ref: '#/components/schemas/AssetType'
+        storage_url:
+          type: string
+          format: uri
+          description: CDN or object-storage URL
+        checksum:
+          type: string
+          description: SHA-256 checksum of the file
+        width:
+          type: integer
+          description: Image width in pixels
+        height:
+          type: integer
+          description: Image height in pixels
+        file_size_bytes:
+          type: integer
+        mime_type:
+          type: string
+          examples: ['image/jpeg', 'image/png', 'image/webp']
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Arbitrary metadata (color profile, DPI, etc.)
+        approval_status:
+          $ref: '#/components/schemas/ApprovalStatus'
+        created_at:
+          type: string
+          format: date-time
+
+    AssetList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # -----------------------------------------------------------------------
+    # GENERATION JOB / TASK
+    # -----------------------------------------------------------------------
+    GenerationRequest:
+      type: object
+      required: [merchant_id, product_id]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        objective:
+          $ref: '#/components/schemas/Objective'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        style_family:
+          $ref: '#/components/schemas/StyleFamily'
+        tone:
+          $ref: '#/components/schemas/TonePreset'
+        target_audience:
+          type: string
+          maxLength: 500
+          description: Free-text target audience override
+        cta_type:
+          $ref: '#/components/schemas/CtaType'
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+          description: Number of note packages to generate
+        free_text_prompt:
+          type: string
+          maxLength: 2000
+          description: Optional natural-language instructions
+        include_price:
+          type: boolean
+          default: false
+        team_id:
+          type: string
+          format: uuid
+          description: Override the active agent team for this request
+
+    DailyGenerationTrigger:
+      type: object
+      required: [merchant_id]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        product_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific products to generate for (empty = all active)
+        dry_run:
+          type: boolean
+          default: false
+          description: If true, simulate the run without persisting results
+
+    RegenerateRequest:
+      type: object
+      properties:
+        style_family:
+          $ref: '#/components/schemas/StyleFamily'
+        tone:
+          $ref: '#/components/schemas/TonePreset'
+        target_audience:
+          type: string
+          maxLength: 500
+        free_text_prompt:
+          type: string
+          maxLength: 2000
+          description: Additional instructions for regeneration
+
+    GenerationJob:
+      type: object
+      required: [id, merchant_id, source_mode, trigger_type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchant_id:
+          type: string
+          format: uuid
+        source_mode:
+          $ref: '#/components/schemas/SourceMode'
+        trigger_type:
+          $ref: '#/components/schemas/TriggerType'
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        total_tasks:
+          type: integer
+          description: Total number of tasks in this job
+        completed_tasks:
+          type: integer
+          description: Number of completed tasks
+        failed_tasks:
+          type: integer
+          description: Number of failed tasks
+        note_packages_created:
+          type: integer
+          description: Number of note packages produced
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+          description: Error details if the job failed
+
+    GenerationTask:
+      type: object
+      required: [id, job_id, task_type, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        task_type:
+          $ref: '#/components/schemas/TaskType'
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        agent_role:
+          type: string
+          description: The agent role that executed this task
+        persona_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The persona applied during execution
+        input_summary:
+          type: object
+          additionalProperties: true
+          description: Summarised input payload (truncated for large inputs)
+        output_summary:
+          type: object
+          additionalProperties: true
+          description: Summarised output payload
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        duration_ms:
+          type: integer
+          nullable: true
+          description: Execution duration in milliseconds
+        error_message:
+          type: string
+          nullable: true
+
+    GenerationTaskList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GenerationTask'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # -----------------------------------------------------------------------
+    # NOTE PACKAGE
+    # -----------------------------------------------------------------------
+    NotePackage:
+      type: object
+      required: [id, merchant_id, product_id, source_mode, objective, status, review_status, compliance_status, ranking_score, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchant_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        asset_pack_id:
+          type: string
+          format: uuid
+          nullable: true
+        generation_job_id:
+          type: string
+          format: uuid
+          nullable: true
+        source_mode:
+          $ref: '#/components/schemas/SourceMode'
+        objective:
+          $ref: '#/components/schemas/Objective'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        persona_label:
+          type: string
+          nullable: true
+          description: Display name of the target audience persona
+        style_family:
+          $ref: '#/components/schemas/StyleFamily'
+          nullable: true
+        cta_type:
+          $ref: '#/components/schemas/CtaType'
+          nullable: true
+        cta_value:
+          type: string
+          nullable: true
+        paid_ready:
+          type: boolean
+          default: false
+        creator_brief_ready:
+          type: boolean
+          default: false
+        compliance_status:
+          $ref: '#/components/schemas/ComplianceStatus'
+        compliance_details:
+          $ref: '#/components/schemas/ComplianceReport'
+        ranking_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        review_status:
+          $ref: '#/components/schemas/ReviewStatus'
+        status:
+          $ref: '#/components/schemas/NotePackageStatus'
+        title_variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextAsset'
+          description: Inline title variants (convenience field)
+        body_variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextAsset'
+          description: Inline body variants
+        cover_image:
+          $ref: '#/components/schemas/ImageAsset'
+          nullable: true
+        hashtags:
+          type: array
+          items:
+            type: string
+        first_comment:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NotePackageList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotePackage'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ComplianceReport:
+      type: object
+      nullable: true
+      properties:
+        layer1_deterministic:
+          type: string
+          enum: [pass, fail]
+          nullable: true
+        layer2_model_classifier:
+          type: string
+          enum: [pass, review, fail]
+          nullable: true
+        layer3_human_review:
+          type: string
+          enum: [pending, approved, rejected]
+          nullable: true
+        flags:
+          type: array
+          items:
+            type: object
+            properties:
+              check_type:
+                type: string
+              severity:
+                type: string
+                enum: [info, warning, critical]
+              message:
+                type: string
+              field_path:
+                type: string
+                nullable: true
+
+    # -----------------------------------------------------------------------
+    # TEXT ASSET
+    # -----------------------------------------------------------------------
+    TextAsset:
+      type: object
+      required: [id, note_package_id, asset_role, content, language, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_package_id:
+          type: string
+          format: uuid
+        asset_role:
+          $ref: '#/components/schemas/TextAssetRole'
+        content:
+          type: string
+          description: The text content
+        language:
+          type: string
+          default: zh-CN
+        version:
+          type: integer
+          minimum: 1
+        hook_type:
+          type: string
+          nullable: true
+          description: Hook type annotation (for titles)
+        tone:
+          type: string
+          nullable: true
+          description: Tone annotation (for body variants)
+        char_count:
+          type: integer
+          nullable: true
+        selling_points_covered:
+          type: array
+          items:
+            type: string
+          description: Which selling points this variant covers
+
+    # -----------------------------------------------------------------------
+    # IMAGE ASSET
+    # -----------------------------------------------------------------------
+    ImageAsset:
+      type: object
+      required: [id, note_package_id, asset_role, image_url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_package_id:
+          type: string
+          format: uuid
+        asset_role:
+          $ref: '#/components/schemas/ImageAssetRole'
+        source_asset_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the original approved asset used as input
+        derived_from:
+          type: string
+          nullable: true
+          description: Generation lineage description
+        prompt_version:
+          type: string
+          nullable: true
+          description: Version of the prompt template used for generation
+        image_url:
+          type: string
+          format: uri
+        width:
+          type: integer
+        height:
+          type: integer
+        format:
+          type: string
+          examples: ['jpg', 'png', 'webp']
+        generation_method:
+          type: string
+          enum: [cartoon_composite, product_only, infographic, photo_composite]
+          nullable: true
+        position:
+          type: integer
+          nullable: true
+          description: Carousel position (1-based)
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # -----------------------------------------------------------------------
+    # BRIEF
+    # -----------------------------------------------------------------------
+    Brief:
+      type: object
+      required: [id, note_package_id, brief_type, content]
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_package_id:
+          type: string
+          format: uuid
+        brief_type:
+          type: string
+          enum: [creator_collaboration, visual_direction, campaign_strategy]
+        content:
+          type: object
+          additionalProperties: true
+          description: Structured brief content
+
+    # -----------------------------------------------------------------------
+    # REVIEW
+    # -----------------------------------------------------------------------
+    ApproveRequest:
+      type: object
+      properties:
+        selected_title_variant_id:
+          type: string
+          format: uuid
+          description: Chosen title variant
+        selected_body_variant_id:
+          type: string
+          format: uuid
+          description: Chosen body variant
+        scheduled_publish_at:
+          type: string
+          format: date-time
+          description: Optional scheduled publish date
+        notes:
+          type: string
+          maxLength: 1000
+          description: Reviewer notes
+
+    RejectRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+          description: Rejection reason (feeds the learning loop)
+        rejection_tags:
+          type: array
+          items:
+            type: string
+          description: Categorized rejection tags (e.g., "wrong_tone", "inaccurate_claim")
+
+    ReviewEvent:
+      type: object
+      required: [id, note_package_id, reviewer_id, action, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_package_id:
+          type: string
+          format: uuid
+        reviewer_id:
+          type: string
+          format: uuid
+        action:
+          $ref: '#/components/schemas/ReviewAction'
+        reason:
+          type: string
+          nullable: true
+        rejection_tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+        selected_title_variant_id:
+          type: string
+          format: uuid
+          nullable: true
+        selected_body_variant_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_publish_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # -----------------------------------------------------------------------
+    # EXPORT BUNDLES
+    # -----------------------------------------------------------------------
+    NoteExportOptions:
+      type: object
+      properties:
+        title_variant_id:
+          type: string
+          format: uuid
+          description: Specific title variant to export
+        body_variant_id:
+          type: string
+          format: uuid
+          description: Specific body variant to export
+        image_format:
+          type: string
+          enum: [jpg, png, webp]
+          default: jpg
+        include_first_comment:
+          type: boolean
+          default: true
+
+    NoteExportBundle:
+      type: object
+      required: [note_package_id, title, body, cover_image, images, hashtags, exported_at]
+      properties:
+        note_package_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        body:
+          type: string
+        cover_image:
+          type: object
+          required: [url, width, height, format]
+          properties:
+            url:
+              type: string
+              format: uri
+            width:
+              type: integer
+            height:
+              type: integer
+            format:
+              type: string
+        images:
+          type: array
+          items:
+            type: object
+            required: [url, position, width, height, format]
+            properties:
+              url:
+                type: string
+                format: uri
+              position:
+                type: integer
+              width:
+                type: integer
+              height:
+                type: integer
+              format:
+                type: string
+        hashtags:
+          type: array
+          items:
+            type: string
+        first_comment:
+          type: string
+          nullable: true
+        style_notes:
+          type: string
+          nullable: true
+          description: Publishing guidance for the operator
+        exported_at:
+          type: string
+          format: date-time
+
+    JuguangExportOptions:
+      type: object
+      properties:
+        title_variant_id:
+          type: string
+          format: uuid
+        body_variant_id:
+          type: string
+          format: uuid
+        aspect_ratios:
+          type: array
+          items:
+            type: string
+            enum: ['3:4', '1:1']
+          default: ['3:4', '1:1']
+          description: Cover aspect ratios to generate
+
+    JuguangExportBundle:
+      type: object
+      required: [note_package_id, headline, description, cta, cover_variants, objective_tag, exported_at]
+      properties:
+        note_package_id:
+          type: string
+          format: uuid
+        headline:
+          type: string
+          description: Paid-optimized headline
+        description:
+          type: string
+          description: Paid-optimized body copy
+        cta:
+          type: object
+          required: [type, text]
+          properties:
+            type:
+              $ref: '#/components/schemas/CtaType'
+            text:
+              type: string
+        cover_variants:
+          type: array
+          items:
+            type: object
+            required: [url, aspect_ratio, width, height]
+            properties:
+              url:
+                type: string
+                format: uri
+              aspect_ratio:
+                type: string
+              width:
+                type: integer
+              height:
+                type: integer
+        objective_tag:
+          type: string
+          description: Campaign objective tag for 聚光
+        estimated_bid_range:
+          type: object
+          nullable: true
+          properties:
+            cpc_min:
+              type: number
+              format: float
+            cpc_max:
+              type: number
+              format: float
+            currency:
+              type: string
+              default: CNY
+        operator_notes:
+          type: string
+          nullable: true
+        exported_at:
+          type: string
+          format: date-time
+
+    PugongyingExportOptions:
+      type: object
+      properties:
+        target_creator_tags:
+          type: array
+          items:
+            type: string
+          description: Override creator matching tags
+        collaboration_type:
+          type: string
+          enum: [image_note, video_note, livestream]
+          default: image_note
+        budget_min:
+          type: number
+          format: float
+        budget_max:
+          type: number
+          format: float
+
+    PugongyingExportBundle:
+      type: object
+      required: [note_package_id, brief, target_audience, must_say_points, taboo_points, visual_references, exported_at]
+      properties:
+        note_package_id:
+          type: string
+          format: uuid
+        brief:
+          type: string
+          description: Structured creator brief text
+        product_summary:
+          type: string
+        target_audience:
+          type: string
+        must_say_points:
+          type: array
+          items:
+            type: string
+          description: Talking points the creator must cover
+        taboo_points:
+          type: array
+          items:
+            type: string
+          description: Topics/claims the creator must avoid
+        visual_references:
+          type: array
+          items:
+            type: object
+            required: [url, description]
+            properties:
+              url:
+                type: string
+                format: uri
+              description:
+                type: string
+        style_direction:
+          type: string
+          description: Expected creative style guidance
+        example_titles:
+          type: array
+          items:
+            type: string
+        suggested_hashtags:
+          type: array
+          items:
+            type: string
+        target_creator_tags:
+          type: array
+          items:
+            type: string
+        collaboration_type:
+          type: string
+        budget_range:
+          type: object
+          nullable: true
+          properties:
+            min:
+              type: number
+              format: float
+            max:
+              type: number
+              format: float
+            currency:
+              type: string
+              default: CNY
+        exported_at:
+          type: string
+          format: date-time
+
+    # -----------------------------------------------------------------------
+    # ANALYTICS / PERFORMANCE
+    # -----------------------------------------------------------------------
+    PerformanceMetrics:
+      type: object
+      required: [id, note_package_id, date, impressions, clicks, saves, comments]
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_package_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        impressions:
+          type: integer
+          minimum: 0
+        clicks:
+          type: integer
+          minimum: 0
+        saves:
+          type: integer
+          minimum: 0
+          description: 收藏 count
+        comments:
+          type: integer
+          minimum: 0
+        cost:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: Ad spend in CNY (for paid content)
+        conversions:
+          type: integer
+          minimum: 0
+          nullable: true
+        revenue:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: Attributed revenue in CNY
+        ctr:
+          type: number
+          format: float
+          nullable: true
+          description: Computed click-through rate
+        save_rate:
+          type: number
+          format: float
+          nullable: true
+          description: Computed save rate (saves / impressions)
+        fatigue_score:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: Computed fatigue score (0 = fresh, 1 = saturated)
+
+    MetricsIngestBatch:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            required: [note_package_id, date, impressions, clicks, saves, comments]
+            properties:
+              note_package_id:
+                type: string
+                format: uuid
+              date:
+                type: string
+                format: date
+              impressions:
+                type: integer
+                minimum: 0
+              clicks:
+                type: integer
+                minimum: 0
+              saves:
+                type: integer
+                minimum: 0
+              comments:
+                type: integer
+                minimum: 0
+              cost:
+                type: number
+                format: float
+                minimum: 0
+              conversions:
+                type: integer
+                minimum: 0
+              revenue:
+                type: number
+                format: float
+                minimum: 0
+
+    ProductPerformanceReport:
+      type: object
+      required: [product_id, start_date, end_date, totals]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        totals:
+          $ref: '#/components/schemas/PerformanceSummary'
+        breakdown:
+          type: array
+          items:
+            type: object
+            required: [dimension_value, metrics]
+            properties:
+              dimension_value:
+                type: string
+              metrics:
+                $ref: '#/components/schemas/PerformanceSummary'
+        top_note_packages:
+          type: array
+          items:
+            type: object
+            required: [note_package_id, ranking_score, metrics]
+            properties:
+              note_package_id:
+                type: string
+                format: uuid
+              ranking_score:
+                type: number
+                format: float
+              metrics:
+                $ref: '#/components/schemas/PerformanceSummary'
+
+    NotePackagePerformanceReport:
+      type: object
+      required: [note_package_id, daily_metrics]
+      properties:
+        note_package_id:
+          type: string
+          format: uuid
+        cumulative:
+          $ref: '#/components/schemas/PerformanceSummary'
+        daily_metrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PerformanceMetrics'
+        fatigue_trend:
+          type: array
+          items:
+            type: object
+            required: [date, score]
+            properties:
+              date:
+                type: string
+                format: date
+              score:
+                type: number
+                format: float
+
+    PerformanceSummary:
+      type: object
+      required: [impressions, clicks, saves, comments]
+      properties:
+        impressions:
+          type: integer
+        clicks:
+          type: integer
+        saves:
+          type: integer
+        comments:
+          type: integer
+        conversions:
+          type: integer
+          nullable: true
+        cost:
+          type: number
+          format: float
+          nullable: true
+        revenue:
+          type: number
+          format: float
+          nullable: true
+        ctr:
+          type: number
+          format: float
+          nullable: true
+        save_rate:
+          type: number
+          format: float
+          nullable: true
+        cost_per_conversion:
+          type: number
+          format: float
+          nullable: true
+        roas:
+          type: number
+          format: float
+          nullable: true
+          description: Return on ad spend
+
+    # -----------------------------------------------------------------------
+    # PERSONA
+    # -----------------------------------------------------------------------
+    PersonaCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: Display name (e.g., 小美文案, Gen-Z Voice)
+        description:
+          type: string
+          maxLength: 2000
+        communication_style:
+          type: string
+          maxLength: 500
+          description: Natural-language description of communication style
+        decision_style:
+          type: string
+          maxLength: 500
+        tone_rules:
+          type: array
+          items:
+            type: string
+          description: Tone directives (e.g., "使用轻松口语化表达")
+        forbidden_behaviors:
+          type: array
+          items:
+            type: string
+          description: Hard constraints on behavior (e.g., "不得使用竞品名称")
+        collaboration_preferences:
+          type: object
+          properties:
+            escalates_to:
+              type: array
+              items:
+                type: string
+            debates_with:
+              type: array
+              items:
+                type: string
+        behavior_settings:
+          type: object
+          properties:
+            creativity_temperature:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 2
+            formality_level:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 1
+            emoji_density:
+              type: string
+              enum: [none, sparse, moderate, heavy]
+            sentence_length:
+              type: string
+              enum: [short, medium, long, mixed]
+
+    PersonaUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        communication_style:
+          type: string
+          maxLength: 500
+        decision_style:
+          type: string
+          maxLength: 500
+        tone_rules:
+          type: array
+          items:
+            type: string
+        forbidden_behaviors:
+          type: array
+          items:
+            type: string
+        collaboration_preferences:
+          type: object
+          properties:
+            escalates_to:
+              type: array
+              items:
+                type: string
+            debates_with:
+              type: array
+              items:
+                type: string
+        behavior_settings:
+          type: object
+          properties:
+            creativity_temperature:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 2
+            formality_level:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 1
+            emoji_density:
+              type: string
+              enum: [none, sparse, moderate, heavy]
+            sentence_length:
+              type: string
+              enum: [short, medium, long, mixed]
+        active:
+          type: boolean
+
+    Persona:
+      type: object
+      required: [id, name, version, active, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        communication_style:
+          type: string
+          nullable: true
+        decision_style:
+          type: string
+          nullable: true
+        tone_rules:
+          type: array
+          items:
+            type: string
+        forbidden_behaviors:
+          type: array
+          items:
+            type: string
+        collaboration_preferences:
+          type: object
+          nullable: true
+          properties:
+            escalates_to:
+              type: array
+              items:
+                type: string
+            debates_with:
+              type: array
+              items:
+                type: string
+        behavior_settings:
+          type: object
+          nullable: true
+          properties:
+            creativity_temperature:
+              type: number
+              format: float
+            formality_level:
+              type: number
+              format: float
+            emoji_density:
+              type: string
+            sentence_length:
+              type: string
+        version:
+          type: integer
+          minimum: 1
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PersonaList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Persona'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # -----------------------------------------------------------------------
+    # AGENT TEAM
+    # -----------------------------------------------------------------------
+    AgentTeamCreate:
+      type: object
+      required: [team_name]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Merchant-specific team. Null = shared platform template.
+        team_name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentTeamMemberCreate'
+          description: Initial team members
+
+    AgentTeamUpdate:
+      type: object
+      properties:
+        team_name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        active:
+          type: boolean
+
+    AgentTeam:
+      type: object
+      required: [id, team_name, version, active, members, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchant_id:
+          type: string
+          format: uuid
+          nullable: true
+        team_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          minimum: 1
+        active:
+          type: boolean
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentTeamMember'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AgentTeamList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentTeam'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AgentTeamMemberCreate:
+      type: object
+      required: [role_id, persona_id]
+      properties:
+        role_id:
+          type: string
+          format: uuid
+          description: Reference to an AgentRole
+        persona_id:
+          type: string
+          format: uuid
+          description: Reference to a Persona
+        is_required:
+          type: boolean
+          default: true
+          description: Whether this role is mandatory for pipeline execution
+        ordering:
+          type: integer
+          minimum: 0
+          description: Execution order within the pipeline
+
+    AgentTeamMember:
+      type: object
+      required: [id, team_id, role_id, persona_id, is_required, ordering]
+      properties:
+        id:
+          type: string
+          format: uuid
+        team_id:
+          type: string
+          format: uuid
+        role_id:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/AgentRole'
+        persona_id:
+          type: string
+          format: uuid
+        persona:
+          $ref: '#/components/schemas/Persona'
+        is_required:
+          type: boolean
+        ordering:
+          type: integer
+
+    # -----------------------------------------------------------------------
+    # AGENT ROLE
+    # -----------------------------------------------------------------------
+    AgentRole:
+      type: object
+      required: [id, role_key, display_name, is_required_default]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role_key:
+          type: string
+          description: Machine-readable key (e.g., founder_copilot, xhs_note_writer)
+          examples: ['founder_copilot', 'strategy_planner', 'xhs_note_writer', 'cartoon_visual_designer', 'compliance_reviewer', 'ranking_analyst', 'ops_exporter', 'learning_analyst']
+        display_name:
+          type: string
+          description: Human-readable role name
+        description:
+          type: string
+          nullable: true
+        required_output_schema:
+          type: string
+          nullable: true
+          description: JSON Schema key that this role's output must conform to
+        is_required_default:
+          type: boolean
+          description: Whether this role is required by default in new teams
+
+    AgentRoleList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentRole'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # -----------------------------------------------------------------------
+    # PERSONA EXPERIMENT
+    # -----------------------------------------------------------------------
+    PersonaExperimentCreate:
+      type: object
+      required: [experiment_name, hypothesis, variant_members]
+      properties:
+        experiment_name:
+          type: string
+          maxLength: 200
+        hypothesis:
+          type: string
+          maxLength: 2000
+          description: What the experiment aims to prove
+        variant_members:
+          type: array
+          items:
+            type: object
+            required: [role_id, persona_id]
+            properties:
+              role_id:
+                type: string
+                format: uuid
+              persona_id:
+                type: string
+                format: uuid
+          description: |
+            Alternative role-persona mappings for the variant arm. The control
+            arm uses the team's current active configuration.
+        product_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Products to include in the experiment
+        duration_days:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 7
+          description: Experiment duration in days
+
+    PersonaExperiment:
+      type: object
+      required: [id, team_id, experiment_name, hypothesis, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        team_id:
+          type: string
+          format: uuid
+        experiment_name:
+          type: string
+        hypothesis:
+          type: string
+        status:
+          type: string
+          enum: [draft, running, completed, cancelled]
+        variant_members:
+          type: array
+          items:
+            type: object
+            properties:
+              role_id:
+                type: string
+                format: uuid
+              persona_id:
+                type: string
+                format: uuid
+        result_summary:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Experiment results (populated when completed)
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # -----------------------------------------------------------------------
+    # CHAT
+    # -----------------------------------------------------------------------
+    ChatMessageRequest:
+      type: object
+      required: [merchant_id, message]
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Existing conversation ID for multi-turn. Null starts new conversation.
+        message:
+          type: string
+          maxLength: 5000
+          description: Natural-language message from the merchant
+        context:
+          type: object
+          properties:
+            product_id:
+              type: string
+              format: uuid
+              description: Pin the conversation to a specific product
+            note_package_id:
+              type: string
+              format: uuid
+              description: Reference an existing note package for refinement
+
+    ChatSSEEvent:
+      type: object
+      description: |
+        Server-Sent Event payload. The `event` field indicates the type:
+        - `message`: Partial text response from the agent
+        - `artifact`: A structured artifact (note package preview, image URL)
+        - `status`: Pipeline status update
+        - `done`: Stream complete
+        - `error`: Error occurred
+      properties:
+        event:
+          type: string
+          enum: [message, artifact, status, done, error]
+        data:
+          type: object
+          properties:
+            conversation_id:
+              type: string
+              format: uuid
+            content:
+              type: string
+              description: Text content (for message events)
+            artifact_type:
+              type: string
+              enum: [note_package_preview, image_preview, generation_job]
+              nullable: true
+            artifact:
+              type: object
+              additionalProperties: true
+              nullable: true
+              description: Structured artifact payload
+            status_message:
+              type: string
+              nullable: true
+            error_code:
+              type: string
+              nullable: true
+            error_message:
+              type: string
+              nullable: true
