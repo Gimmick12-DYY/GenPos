@@ -87,37 +87,6 @@ class LLMClient:
 
         return {"content": parsed, "usage": result["usage"], "model": result["model"]}
 
-
-def _parse_json_from_content(content: str) -> dict | None:
-    """Parse JSON from LLM content, tolerating markdown code blocks or surrounding text."""
-    if not content:
-        return None
-    # Direct parse
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        pass
-    # Strip markdown code block
-    s = content.strip()
-    for marker in ("```json", "```"):
-        if s.startswith(marker):
-            s = s[len(marker) :].strip()
-        if s.endswith("```"):
-            s = s[: -3].strip()
-    try:
-        return json.loads(s)
-    except json.JSONDecodeError:
-        pass
-    # Find first { and last } and try to parse that object
-    start = s.find("{")
-    end = s.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            return json.loads(s[start : end + 1])
-        except json.JSONDecodeError:
-            pass
-    return None
-
     async def chat_completion_stream(
         self,
         system_prompt: str,
@@ -144,6 +113,47 @@ def _parse_json_from_content(content: str) -> dict | None:
             delta = chunk.choices[0].delta if chunk.choices else None
             if delta and delta.content:
                 yield delta.content
+
+
+def _parse_json_from_content(content: str) -> dict | None:
+    """Parse JSON from LLM content, tolerating markdown code blocks, surrounding text, or truncation."""
+    if not content:
+        return None
+    # Direct parse
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+    # Strip markdown code block
+    s = content.strip()
+    for marker in ("```json", "```"):
+        if s.startswith(marker):
+            s = s[len(marker) :].strip()
+        if s.endswith("```"):
+            s = s[: -3].strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Find first { and last } and try to parse that object
+    start = s.find("{")
+    end = s.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(s[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    # Repair truncated JSON: model hit max_tokens and response was cut off.
+    if s.strip().startswith("{"):
+        open_braces = s.count("{") - s.count("}")
+        open_brackets = s.count("[") - s.count("]")
+        if open_brackets > 0 or open_braces > 0:
+            suffix = "]" * max(0, open_brackets) + "}" * max(0, open_braces)
+            try:
+                return json.loads(s + suffix)
+            except json.JSONDecodeError:
+                pass
+    return None
 
 
 llm_client = LLMClient()

@@ -80,7 +80,7 @@ class StrategyPlannerAgent(BaseAgent):
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=0.7,
-                max_tokens=3072,
+                max_tokens=4096,
             )
         except Exception as exc:
             self._logger.error("LLM call failed: %s", exc, exc_info=True)
