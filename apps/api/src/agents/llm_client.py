@@ -76,16 +76,47 @@ class LLMClient:
             response_format={"type": "json_object"},
         )
 
-        try:
-            parsed = json.loads(result["content"])
-        except json.JSONDecodeError:
-            logger.error(
-                "Failed to parse LLM response as JSON: %s",
-                result["content"][:200],
+        raw = result["content"].strip()
+        parsed = _parse_json_from_content(raw)
+        if parsed is None:
+            logger.warning(
+                "Failed to parse LLM response as JSON (first 300 chars): %s",
+                raw[:300],
             )
-            parsed = {"raw_content": result["content"], "parse_error": True}
+            parsed = {"raw_content": raw, "parse_error": True}
 
         return {"content": parsed, "usage": result["usage"], "model": result["model"]}
+
+
+def _parse_json_from_content(content: str) -> dict | None:
+    """Parse JSON from LLM content, tolerating markdown code blocks or surrounding text."""
+    if not content:
+        return None
+    # Direct parse
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+    # Strip markdown code block
+    s = content.strip()
+    for marker in ("```json", "```"):
+        if s.startswith(marker):
+            s = s[len(marker) :].strip()
+        if s.endswith("```"):
+            s = s[: -3].strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Find first { and last } and try to parse that object
+    start = s.find("{")
+    end = s.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(s[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    return None
 
     async def chat_completion_stream(
         self,
