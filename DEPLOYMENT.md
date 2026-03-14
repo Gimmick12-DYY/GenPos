@@ -175,8 +175,8 @@ If the frontend shows this error when opening the app:
 
 1. **Vercel env**  
    In Vercel → Project → Settings → Environment Variables, set:
-   - `NEXT_PUBLIC_API_URL` = your Railway API URL **including** `/api/v1`, e.g. `https://your-app.up.railway.app` (no trailing slash).  
-   The app uses this as the base, so the full URL for auth is `NEXT_PUBLIC_API_URL/auth/dev-token`. If you use a custom domain for the API, use that. Redeploy the frontend after changing env vars.
+   - `NEXT_PUBLIC_API_URL` = your Railway API base **including** `/api/v1`, e.g. `https://your-app.up.railway.app/api/v1` (no trailing slash after `api/v1`).  
+   The frontend calls `NEXT_PUBLIC_API_URL/auth/dev-token` and `NEXT_PUBLIC_API_URL/auth/bootstrap`. If you use a custom domain for the API, use that same base. Redeploy the frontend after changing env vars.
 
 2. **CORS**  
    In Railway → API service → Variables, set:
@@ -192,6 +192,15 @@ If the frontend shows this error when opening the app:
 
 4. **Railway API health**  
    Open `https://YOUR-RAILWAY-API-URL/health` in a browser. You should see `{"status":"ok","service":"genpos-api"}`. If not, check Railway logs and that `DATABASE_URL` is set (private URL is fine).
+
+5. **Chat shows "Failed to fetch" or "无法连接后端" when sending a message**  
+   The first load may succeed (dev-token works) but POST /chat/message can still fail if: the API crashes during generation (check Railway logs for tracebacks), `OPENAI_API_KEY` is missing or invalid, or the request times out (e.g. Railway/proxy limit). Fix the cause and retry; the app now returns a clearer error when the API responds with an error body.
+
+6. **Reading Railway logs — common errors**  
+   When tracing `logs.*.log` or Railway dashboard logs:
+   - **`429` / `insufficient_quota` (OpenAI)** — Your OpenAI API key has exceeded quota or billing is not set up. Fix at [platform.openai.com](https://platform.openai.com) (billing / usage).
+   - **`Session is already flushing`** / **`cannot use Connection.transaction() in a manually started transaction`** — These came from running writer and designer in parallel on the same DB session; the pipeline now runs them sequentially. If you still see this on an older deploy, redeploy the latest API.
+   - **`OPTIONS ... 400 Bad Request`** — Some clients send a preflight that returns 400; if POST immediately after succeeds (e.g. dev-token 200), you can ignore.
 
 ---
 

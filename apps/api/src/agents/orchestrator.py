@@ -123,15 +123,12 @@ class GenerationOrchestrator:
             if not planner_result.success:
                 return await self._fail_job(db, job, pipeline_log, planner_result.error or "Planner failed")
 
-            # Step 3 — Note Writer + Visual Designer (parallel)
-            writer_task = self._run_agent_task(
+            # Step 3 — Note Writer then Visual Designer (sequential: shared session cannot flush concurrently)
+            writer_result = await self._run_agent_task(
                 db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer"
             )
-            designer_task = self._run_agent_task(
+            designer_result = await self._run_agent_task(
                 db, job.id, self.designer, ctx, "image_gen", "cartoon_visual_designer"
-            )
-            writer_result, designer_result = await asyncio.gather(
-                writer_task, designer_task
             )
 
             pipeline_log.append({"agent": "xhs_note_writer", "success": writer_result.success})

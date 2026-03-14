@@ -91,7 +91,10 @@ export default function ChatPage() {
         // For now we just show the text response.
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "请求失败，请重试";
+      let msg = err instanceof Error ? err.message : "请求失败，请重试";
+      if (/failed to fetch|network error/i.test(msg)) {
+        msg = "无法连接后端（可能是请求超时或 API 暂时不可用）。请检查 Railway 上 API 是否运行正常、OPENAI_API_KEY 是否已配置，或稍后重试。";
+      }
       setMessages((prev) => [
         ...prev,
         {

@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+import logging
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -16,11 +19,25 @@ async def send_chat_message(
     _: dict = Depends(verify_token),
 ):
     """Send a free-text message to the Founder Copilot and run the generation pipeline."""
-    result = await generation_service.run_on_demand_generation(
-        db=db,
-        merchant_id=body.merchant_id,
-        user_message=body.message,
-    )
+    try:
+        merchant_uuid = UUID(body.merchant_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid merchant_id format")
+
+    try:
+        result = await generation_service.run_on_demand_generation(
+            db=db,
+            merchant_id=merchant_uuid,
+            user_message=body.message,
+        )
+    except Exception as e:
+        logging.getLogger(__name__).exception("Chat generation failed")
+        return ChatMessageResponse(
+            response=f"生成过程遇到问题：{getattr(e, 'message', str(e))}。请检查 API 日志或稍后重试。",
+            intent="error",
+            structured_job=None,
+            note_packages=None,
+        )
 
     note_packages: list[NotePackageResponse] | None = None
     if result.get("note_package_id"):
