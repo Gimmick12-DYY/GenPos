@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Union
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -26,7 +26,12 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     temporal_host: str = "localhost:7233"
-    temporal_namespace: str = "genpos"
+    temporal_namespace: str = "default"
+    temporal_task_queue: str = "genpos-tasks"
+    use_temporal_for_generation: bool = Field(
+        default=False,
+        description="Run on-demand generation as a Temporal workflow (worker process required).",
+    )
 
     cors_origins: Union[str, list[str]] = ["http://localhost:3000"]
 

@@ -12,7 +12,8 @@ security_scheme = HTTPBearer()
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.jwt_expire_minutes))
-    to_encode.update({"exp": expire})
+    # jose/pyjwt expect exp as Unix seconds (numeric date)
+    to_encode.update({"exp": int(expire.timestamp())})
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

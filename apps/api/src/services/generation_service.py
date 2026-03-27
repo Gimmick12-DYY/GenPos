@@ -21,6 +21,7 @@ async def run_on_demand_generation(
     special_instructions: str = "",
     is_juguang: bool = False,
     is_pugongying: bool = False,
+    job_id: UUID | None = None,
 ) -> dict:
     """Run on-demand generation pipeline and return results."""
     return await orchestrator.run_on_demand(
@@ -34,6 +35,7 @@ async def run_on_demand_generation(
         special_instructions=special_instructions,
         is_juguang=is_juguang,
         is_pugongying=is_pugongying,
+        job_id=job_id,
     )
 
 

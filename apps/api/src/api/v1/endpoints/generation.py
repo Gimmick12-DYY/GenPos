@@ -5,17 +5,21 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
+from src.core.config import settings
+from src.core.database import async_session_factory, get_db
 from src.core.security import verify_token
 from src.models import GenerationJob, GenerationTask
 from src.schemas import (
     DailyRunRequest,
+    GenerationAsyncStartResponse,
     GenerationJobResponse,
     GenerationRequest,
     GenerationTaskResponse,
     TaskListResponse,
 )
 from src.services import generation_service
+from src.temporal.client import get_temporal_client
+from src.temporal.workflows.on_demand import OnDemandGenerationWorkflow
 
 router = APIRouter()
 
@@ -27,6 +31,55 @@ async def generate_on_demand(
     _: dict = Depends(verify_token),
 ):
     """Submit an on-demand generation request and run the full agent pipeline."""
+    if settings.use_temporal_for_generation:
+        job = GenerationJob(
+            merchant_id=body.merchant_id,
+            source_mode="on_demand",
+            trigger_type="user_request",
+            status="pending",
+        )
+        db.add(job)
+        await db.flush()
+        await db.commit()
+
+        payload = {
+            "job_id": str(job.id),
+            "merchant_id": str(body.merchant_id),
+            "product_id": str(body.product_id) if body.product_id else None,
+            "user_message": "",
+            "objective": body.objective,
+            "persona": body.persona or "",
+            "style_preference": body.style_preference or "",
+            "special_instructions": body.special_instructions or "",
+            "is_juguang": body.is_juguang,
+            "is_pugongying": body.is_pugongying,
+        }
+
+        try:
+            client = await get_temporal_client()
+            handle = await client.start_workflow(
+                OnDemandGenerationWorkflow.run,
+                payload,
+                id=f"on-demand-gen-{job.id}",
+                task_queue=settings.temporal_task_queue,
+            )
+        except Exception as exc:
+            async with async_session_factory() as session:
+                row = await session.get(GenerationJob, job.id)
+                if row:
+                    row.status = "failed"
+                    await session.commit()
+            raise HTTPException(
+                status_code=503,
+                detail=f"Temporal unavailable: {exc}",
+            ) from exc
+
+        return GenerationAsyncStartResponse(
+            generation_job_id=job.id,
+            workflow_id=handle.id,
+            run_id=handle.first_execution_run_id,
+        )
+
     result = await generation_service.run_on_demand_generation(
         db=db,
         merchant_id=body.merchant_id,

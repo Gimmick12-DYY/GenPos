@@ -60,8 +60,7 @@ The API will be available at `http://localhost:8000` and the frontend at `http:/
 ```
 apps/
   web/                  # Next.js frontend
-  api/                  # FastAPI backend
-  worker/               # Temporal background workers
+  api/                  # FastAPI backend + Temporal worker (`python -m src.temporal.run_worker`)
 packages/
   types/                # Shared type definitions
   config/               # Shared configuration

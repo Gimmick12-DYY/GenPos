@@ -48,3 +48,13 @@ class GenerationTaskResponse(BaseSchema):
 
 class TaskListResponse(BaseSchema):
     tasks: list[GenerationTaskResponse]
+
+
+class GenerationAsyncStartResponse(BaseSchema):
+    """Returned when `USE_TEMPORAL_FOR_GENERATION` is enabled: pipeline runs in the worker."""
+
+    generation_job_id: UUID
+    workflow_id: str
+    run_id: str
+    status: Literal["pending"] = "pending"
+    mode: Literal["async"] = "async"

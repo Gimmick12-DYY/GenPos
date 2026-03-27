@@ -10,6 +10,7 @@ from .product import ProductCreate, ProductListResponse, ProductResponse, Produc
 from .asset import AssetListResponse, AssetPackCreate, AssetPackResponse, AssetResponse
 from .generation import (
     DailyRunRequest,
+    GenerationAsyncStartResponse,
     GenerationJobResponse,
     GenerationRequest,
     GenerationTaskResponse,
@@ -77,6 +78,7 @@ __all__ = [
     # generation
     "GenerationRequest",
     "DailyRunRequest",
+    "GenerationAsyncStartResponse",
     "GenerationJobResponse",
     "GenerationTaskResponse",
     "TaskListResponse",

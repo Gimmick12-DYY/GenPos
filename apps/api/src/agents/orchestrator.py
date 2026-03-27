@@ -9,23 +9,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base import AgentContext, AgentResult
-from src.agents.llm_client import llm_client
-from src.agents.founder_copilot import FounderCopilotAgent
-from src.agents.strategy_planner import StrategyPlannerAgent
-from src.agents.note_writer import NoteWriterAgent
-from src.agents.visual_designer import VisualDesignerAgent
 from src.agents.compliance_reviewer import ComplianceReviewerAgent
+from src.agents.founder_copilot import FounderCopilotAgent
+from src.agents.llm_client import llm_client
+from src.agents.note_writer import NoteWriterAgent
+from src.agents.strategy_planner import StrategyPlannerAgent
+from src.agents.visual_designer import VisualDesignerAgent
 from src.models import (
-    Merchant,
-    MerchantRules,
-    Product,
-    AssetPack,
     Asset,
+    AssetPack,
     GenerationJob,
     GenerationTask,
-    NotePackage,
-    TextAsset,
     ImageAsset,
+    Merchant,
+    MerchantRules,
+    NotePackage,
+    Product,
+    TextAsset,
 )
 from src.services import analytics_service, fatigue_service
 
@@ -61,6 +61,7 @@ class GenerationOrchestrator:
         special_instructions: str = "",
         is_juguang: bool = False,
         is_pugongying: bool = False,
+        job_id: UUID | None = None,
     ) -> dict:
         """Run the full on-demand generation pipeline.
 
@@ -77,14 +78,25 @@ class GenerationOrchestrator:
             special_instructions,
         )
 
-        job = GenerationJob(
-            merchant_id=merchant_id,
-            source_mode="on_demand",
-            trigger_type="user_request",
-            status="running",
-        )
-        db.add(job)
-        await db.flush()
+        if job_id is not None:
+            job = await db.get(GenerationJob, job_id)
+            if not job:
+                return {"error": "Generation job not found"}
+            if job.merchant_id != merchant_id:
+                return {"error": "Job does not belong to this merchant"}
+            if job.status != "pending":
+                return {"error": f"Job is not pending (status={job.status})"}
+            job.status = "running"
+            await db.flush()
+        else:
+            job = GenerationJob(
+                merchant_id=merchant_id,
+                source_mode="on_demand",
+                trigger_type="user_request",
+                status="running",
+            )
+            db.add(job)
+            await db.flush()
         ctx.job_id = job.id
 
         pipeline_log: list[dict] = []

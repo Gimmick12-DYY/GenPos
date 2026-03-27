@@ -1,9 +1,13 @@
-import { getToken } from "./auth";
+import { ensureAuth, getToken } from "./auth";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  options?: RequestInit,
+  _retriedAfter401 = false
+): Promise<T> {
   const url = `${API_BASE}${path}`;
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -18,8 +22,27 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers,
   });
   if (!res.ok) {
+    if (
+      res.status === 401 &&
+      !_retriedAfter401 &&
+      !path.startsWith("/auth/")
+    ) {
+      try {
+        await ensureAuth({ forceRefresh: true });
+        return request<T>(path, options, true);
+      } catch {
+        /* fall through to surface API error */
+      }
+    }
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `API error: ${res.status} ${res.statusText}`);
+    const detail = (err as { detail?: unknown }).detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail) && detail[0]?.msg
+          ? detail.map((d: { msg: string }) => d.msg).join("; ")
+          : `API error: ${res.status} ${res.statusText}`;
+    throw new Error(message);
   }
   return res.json();
 }

@@ -52,10 +52,16 @@ async function requestDevToken(): Promise<{ access_token: string; merchant_id: s
   throw { status: res.status, detail: formatApiError(detail), isNoMerchant: res.status === 404 && String(detail).toLowerCase().includes("merchant") };
 }
 
-export async function ensureAuth(): Promise<{ token: string; merchantId: string }> {
-  const token = getToken();
-  const merchantId = getMerchantId();
-  if (token && merchantId) return { token, merchantId };
+export async function ensureAuth(options?: {
+  forceRefresh?: boolean;
+}): Promise<{ token: string; merchantId: string }> {
+  if (!options?.forceRefresh) {
+    const token = getToken();
+    const merchantId = getMerchantId();
+    if (token && merchantId) return { token, merchantId };
+  } else {
+    clearAuth();
+  }
 
   try {
     const data = await requestDevToken();
