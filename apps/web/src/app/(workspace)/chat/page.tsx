@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { Send, Bot, User, Trash2 } from "lucide-react";
+import { Send, Bot, User, Trash2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, postSse } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -258,25 +258,47 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center justify-end border-b border-stone-200/80 bg-surface-raised/90 px-4 py-2 backdrop-blur-sm">
-        <button
-          type="button"
-          onClick={() => void handleClearChat()}
-          disabled={clearing || !authReady || isTyping}
-          className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Trash2 className="h-4 w-4" />
-          {clearing ? "清空中…" : "清空对话"}
-        </button>
-      </div>
-      {chatNotice && (
-        <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">
-          {chatNotice}
+    <div className="flex h-full min-h-0 flex-col bg-gradient-to-b from-stone-100/50 via-surface to-surface">
+      {/* Session chrome: title + context + clear — one card, not a floating orphan button */}
+      <div className="shrink-0 px-4 pb-2 pt-4 sm:px-6">
+        <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-stone-200/70 bg-white/95 shadow-sm ring-1 ring-stone-100/80">
+          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10">
+                <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold tracking-tight text-stone-900">
+                  营销助手
+                </h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+                  结合「我的产品库」与你对话；内容按商户隔离并同步保存。
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleClearChat()}
+              disabled={clearing || !authReady || isTyping}
+              className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-stone-200/80 bg-stone-50/80 px-3 py-2 text-xs font-medium text-stone-600 transition-colors hover:border-stone-300 hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 sm:self-center"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              {clearing ? "清空中…" : "清空会话"}
+            </button>
+          </div>
+          {chatNotice && (
+            <div className="border-t border-amber-100 bg-amber-50/90 px-4 py-2.5 text-center text-xs text-amber-950">
+              {chatNotice}
+            </div>
+          )}
         </div>
-      )}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl space-y-6 px-5 py-8">
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6"
+      >
+        <div className="mx-auto max-w-3xl space-y-5 pb-8 pt-2">
           {messages
             .filter(
               (m) =>
@@ -286,31 +308,31 @@ export default function ChatPage() {
             <div
               key={msg.id}
               className={cn(
-                "flex gap-3",
+                "group flex gap-3",
                 msg.role === "user" ? "flex-row-reverse" : "flex-row",
               )}
             >
               <div
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm ring-2 ring-white",
                   msg.role === "assistant"
                     ? "bg-gradient-to-br from-primary to-primary-light"
-                    : "bg-stone-200",
+                    : "bg-gradient-to-br from-stone-200 to-stone-300",
                 )}
               >
                 {msg.role === "assistant" ? (
                   <Bot className="h-4 w-4 text-white" />
                 ) : (
-                  <User className="h-4 w-4 text-stone-600" />
+                  <User className="h-4 w-4 text-stone-700" />
                 )}
               </div>
-              <div className="flex max-w-[75%] flex-col gap-2">
+              <div className="flex max-w-[min(85%,28rem)] flex-col gap-1.5">
                 <div
                   className={cn(
-                    "rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+                    "rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-md shadow-stone-900/[0.04]",
                     msg.role === "user"
                       ? "rounded-br-md bg-gradient-to-br from-primary to-primary-dark text-white"
-                      : "rounded-bl-md border border-stone-200/80 bg-surface-raised text-stone-800",
+                      : "rounded-bl-md border border-stone-200/90 bg-white text-stone-800",
                   )}
                 >
                   {msg.content.split("\n").map((line, i) => (
@@ -320,9 +342,11 @@ export default function ChatPage() {
                   ))}
                 </div>
                 {msg.notePackageId && (
-                  <p className="text-xs text-stone-500">
-                    已生成笔记包，可前往「待审核」查看（ID 前缀{" "}
-                    {msg.notePackageId.slice(0, 8)}…）
+                  <p className="px-1 text-[11px] text-stone-500">
+                    已生成笔记包 →「待审核」
+                    <span className="ml-1 font-mono text-stone-400">
+                      {msg.notePackageId.slice(0, 8)}…
+                    </span>
                   </p>
                 )}
               </div>
@@ -331,14 +355,14 @@ export default function ChatPage() {
 
           {isTyping && (
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-light">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-light shadow-sm ring-2 ring-white">
                 <Bot className="h-4 w-4 text-white" />
               </div>
-              <div className="rounded-2xl rounded-bl-md border border-stone-200 bg-surface-raised px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-stone-400 [animation-delay:0ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-stone-400 [animation-delay:150ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-stone-400 [animation-delay:300ms]" />
+              <div className="rounded-2xl rounded-bl-md border border-stone-200/90 bg-white px-4 py-3 shadow-md shadow-stone-900/[0.04]">
+                <div className="flex gap-1.5">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-primary/60 [animation-delay:0ms]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-primary/50 [animation-delay:150ms]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-primary/40 [animation-delay:300ms]" />
                 </div>
               </div>
             </div>
@@ -346,33 +370,38 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="border-t border-stone-200/80 bg-surface-raised/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-surface-raised/80">
-        <form
-          onSubmit={(ev) => void handleSubmit(ev)}
-          className="mx-auto flex max-w-3xl items-end gap-3"
-        >
-          <div className="relative flex-1">
+      <div className="shrink-0 border-t border-stone-200/60 bg-white/90 px-4 pb-4 pt-3 backdrop-blur-md supports-[backdrop-filter]:bg-white/75 sm:px-6">
+        <div className="mx-auto max-w-3xl">
+          <form
+            onSubmit={(ev) => void handleSubmit(ev)}
+            className="flex flex-col gap-2 rounded-2xl border border-stone-200/80 bg-stone-50/80 p-2 shadow-lg shadow-stone-900/[0.06] ring-1 ring-stone-100 sm:flex-row sm:items-end"
+          >
+            <label className="sr-only" htmlFor="chat-input">
+              消息内容
+            </label>
             <textarea
+              id="chat-input"
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入你的需求，Shift+Enter换行..."
+              placeholder="描述需求或 @ 产品…（Enter 发送，Shift+Enter 换行）"
               rows={1}
-              className="input-surface max-h-32 min-h-[44px] w-full resize-none rounded-2xl px-4 py-3 pr-12 text-sm text-stone-900 placeholder:text-stone-400"
+              className="input-surface max-h-36 min-h-[48px] flex-1 resize-none rounded-xl border-0 bg-white px-4 py-3 text-sm text-stone-900 shadow-inner shadow-stone-900/5 placeholder:text-stone-400 focus:ring-2 focus:ring-primary/20"
             />
-          </div>
-          <button
-            type="submit"
-            disabled={!input.trim() || isTyping || !authReady}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-md shadow-primary/25 transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Send className="h-4.5 w-4.5" />
-          </button>
-        </form>
-        <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-stone-400">
-          对话会同步到服务器；可使用「清空对话」删除本条会话记录。生成完成后可在「待审核」查看封面与文案
-        </p>
+            <button
+              type="submit"
+              disabled={!input.trim() || isTyping || !authReady}
+              title="发送"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-md shadow-primary/20 transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:h-[48px] sm:w-12"
+            >
+              <Send className="h-5 w-5" aria-hidden />
+            </button>
+          </form>
+          <p className="mt-2.5 text-center text-[11px] leading-relaxed text-stone-400">
+            生成结果可在「待审核」查看封面与配图；上方「清空会话」会删除本条对话的服务器记录。
+          </p>
+        </div>
       </div>
     </div>
   );
