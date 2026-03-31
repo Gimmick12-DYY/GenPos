@@ -15,7 +15,39 @@ class LLMClient:
     """Async wrapper around OpenAI-compatible chat completions API."""
 
     def __init__(self) -> None:
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._primary = AsyncOpenAI(api_key=settings.openai_api_key or "dummy")
+        self._secondary: AsyncOpenAI | None = None
+        if settings.llm_secondary_api_key:
+            kwargs: dict[str, Any] = {"api_key": settings.llm_secondary_api_key}
+            if settings.llm_secondary_base_url:
+                kwargs["base_url"] = settings.llm_secondary_base_url
+            self._secondary = AsyncOpenAI(**kwargs)
+
+    async def _complete_raw(
+        self,
+        client: AsyncOpenAI,
+        model: str,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        response_format: dict | None,
+    ) -> dict:
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+        response = await client.chat.completions.create(**kwargs)
+        content = response.choices[0].message.content or ""
+        usage = {
+            "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
+            "completion_tokens": response.usage.completion_tokens if response.usage else 0,
+            "total_tokens": response.usage.total_tokens if response.usage else 0,
+        }
+        return {"content": content, "usage": usage, "model": response.model}
 
     async def chat_completion(
         self,
@@ -35,25 +67,27 @@ class LLMClient:
             {"role": "user", "content": user_prompt},
         ]
 
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if response_format:
-            kwargs["response_format"] = response_format
-
-        response = await self._client.chat.completions.create(**kwargs)
-
-        content = response.choices[0].message.content or ""
-        usage = {
-            "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-            "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-            "total_tokens": response.usage.total_tokens if response.usage else 0,
-        }
-
-        return {"content": content, "usage": usage, "model": response.model}
+        try:
+            return await self._complete_raw(
+                self._primary,
+                model,
+                messages,
+                temperature,
+                max_tokens,
+                response_format,
+            )
+        except Exception as first:
+            if self._secondary is None:
+                raise
+            logger.warning("Primary LLM failed (%s); trying secondary provider", first)
+            return await self._complete_raw(
+                self._secondary,
+                settings.llm_secondary_model,
+                messages,
+                temperature,
+                max_tokens,
+                response_format,
+            )
 
     async def chat_completion_json(
         self,
@@ -101,7 +135,7 @@ class LLMClient:
             {"role": "user", "content": user_prompt},
         ]
 
-        stream = await self._client.chat.completions.create(
+        stream = await self._primary.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temperature,

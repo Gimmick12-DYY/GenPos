@@ -33,6 +33,19 @@ class Settings(BaseSettings):
         description="Run on-demand generation as a Temporal workflow (worker process required).",
     )
 
+    max_concurrent_generation_jobs: int = Field(
+        default=10,
+        description="Per-merchant cap on pending+running generation jobs (BL-111).",
+    )
+    generation_job_timeout_seconds: int = Field(
+        default=900,
+        description="Mark stale pending/running jobs as failed after this age (seconds).",
+    )
+
+    llm_secondary_api_key: str = ""
+    llm_secondary_base_url: str = ""
+    llm_secondary_model: str = "gpt-4o-mini"
+
     cors_origins: Union[str, list[str]] = ["http://localhost:3000"]
 
     @field_validator("cors_origins", mode="before")

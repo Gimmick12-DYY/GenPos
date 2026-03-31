@@ -59,7 +59,11 @@ async def approve_note_package(
     reviewer_id = UUID(token["sub"])
     reason = body.reason if body else None
     await note_package_service.approve_note_package(
-        db, package_id=package_id, reviewer_id=reviewer_id, reason=reason
+        db,
+        package_id=package_id,
+        reviewer_id=reviewer_id,
+        reason=reason,
+        merchant_id=reviewer_id,
     )
     pkg = await note_package_service.get_note_package_detail(db, package_id)
     if pkg is None:
@@ -77,7 +81,11 @@ async def reject_note_package(
     """Reject a note package with reason."""
     reviewer_id = UUID(token["sub"])
     await note_package_service.reject_note_package(
-        db, package_id=package_id, reviewer_id=reviewer_id, reason=body.reason
+        db,
+        package_id=package_id,
+        reviewer_id=reviewer_id,
+        reason=body.reason,
+        merchant_id=reviewer_id,
     )
     pkg = await note_package_service.get_note_package_detail(db, package_id)
     if pkg is None:

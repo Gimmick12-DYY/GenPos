@@ -12,17 +12,23 @@ from .generation import (
     DailyRunRequest,
     GenerationAsyncStartResponse,
     GenerationJobResponse,
+    GenerationJobResultResponse,
     GenerationRequest,
     GenerationTaskResponse,
     TaskListResponse,
 )
 from .note_package import (
     BriefResponse,
+    ImageAssetCreate,
     ImageAssetResponse,
+    NotePackageCreate,
     NotePackageDetailResponse,
     NotePackageListResponse,
+    NotePackagePatch,
     NotePackageResponse,
+    TextAssetCreate,
     TextAssetResponse,
+    TextAssetPatch,
 )
 from .review import (
     ApproveRequest,
@@ -51,7 +57,12 @@ from .agent_team import (
     ExperimentCreate,
     ExperimentResponse,
 )
-from .chat import ChatMessageRequest, ChatMessageResponse
+from .chat import (
+    ChatHistoryMessage,
+    ChatMessageRequest,
+    ChatMessageResponse,
+    ChatStreamRequest,
+)
 
 __all__ = [
     # common
@@ -80,12 +91,18 @@ __all__ = [
     "DailyRunRequest",
     "GenerationAsyncStartResponse",
     "GenerationJobResponse",
+    "GenerationJobResultResponse",
     "GenerationTaskResponse",
     "TaskListResponse",
     # note_package
+    "NotePackageCreate",
+    "NotePackagePatch",
     "NotePackageResponse",
     "NotePackageListResponse",
+    "TextAssetCreate",
     "TextAssetResponse",
+    "TextAssetPatch",
+    "ImageAssetCreate",
     "ImageAssetResponse",
     "BriefResponse",
     "NotePackageDetailResponse",
@@ -119,6 +136,8 @@ __all__ = [
     "ExperimentCreate",
     "ExperimentResponse",
     # chat
+    "ChatHistoryMessage",
     "ChatMessageRequest",
     "ChatMessageResponse",
+    "ChatStreamRequest",
 ]

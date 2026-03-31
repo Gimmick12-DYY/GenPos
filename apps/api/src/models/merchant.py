@@ -41,6 +41,9 @@ class Merchant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     policy_rules: Mapped[list[PolicyRule]] = relationship(
         "PolicyRule", back_populates="merchant", cascade="all, delete-orphan"
     )
+    chat_messages: Mapped[list["ChatMessage"]] = relationship(
+        "ChatMessage", back_populates="merchant", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Merchant {self.name!r} id={self.id}>"
@@ -73,9 +76,10 @@ class MerchantRules(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .product import Product
+    from .agent_team import AgentTeam
     from .asset import AssetPack
+    from .chat_message import ChatMessage
     from .generation import GenerationJob
     from .note_package import NotePackage
-    from .agent_team import AgentTeam
+    from .product import Product
     from .prompt import PolicyRule

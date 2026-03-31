@@ -15,6 +15,7 @@ from src.agents.llm_client import llm_client
 from src.agents.note_writer import NoteWriterAgent
 from src.agents.strategy_planner import StrategyPlannerAgent
 from src.agents.visual_designer import VisualDesignerAgent
+from src.core.storage import storage
 from src.models import (
     Asset,
     AssetPack,
@@ -27,7 +28,7 @@ from src.models import (
     Product,
     TextAsset,
 )
-from src.services import analytics_service, fatigue_service
+from src.services import analytics_service, fatigue_service, image_render_service
 
 logger = logging.getLogger(__name__)
 
@@ -497,7 +498,50 @@ class GenerationOrchestrator:
             ))
 
         await db.flush()
+        await self._hydrate_placeholder_images(db, package, merchant_id, note, visual, strategy)
+        await db.flush()
         return package
+
+    async def _hydrate_placeholder_images(
+        self,
+        db: AsyncSession,
+        package: NotePackage,
+        merchant_id: UUID,
+        note: dict,
+        visual: dict,
+        strategy: dict,
+    ) -> None:
+        """BL-112: upload stylized placeholder PNGs to object storage when URLs are empty."""
+        img_stmt = select(ImageAsset).where(ImageAsset.note_package_id == package.id)
+        assets = list((await db.execute(img_stmt)).scalars().all())
+        titles = note.get("title_variants") or []
+        headline = ""
+        if titles:
+            t0 = titles[0]
+            headline = t0.get("title", t0) if isinstance(t0, dict) else str(t0)
+        headline = (headline or "笔记封面")[:80]
+        subtitle = str(strategy.get("style_family") or visual.get("style_family") or "封面预览")
+
+        pack_key = f"gen/{package.id.hex[:8]}"
+        for ia in assets:
+            if (ia.image_url or "").strip():
+                continue
+            meta = ia.metadata_json if isinstance(ia.metadata_json, dict) else {}
+            h1, h2 = image_render_service.headline_from_visual_metadata(meta)
+            line1 = h1 if ia.asset_role != "cover" else headline
+            line2 = h2 if ia.asset_role != "cover" else subtitle
+            png = image_render_service.render_note_visual_placeholder(
+                headline=line1,
+                subtitle=f"{line2} · {ia.asset_role}",
+            )
+            url = await storage.upload_file(
+                file_content=png,
+                content_type="image/png",
+                merchant_id=str(merchant_id),
+                asset_pack_id=pack_key,
+                original_filename=f"{ia.asset_role}.png",
+            )
+            ia.image_url = url
 
     # ------------------------------------------------------------------
     # Error handling

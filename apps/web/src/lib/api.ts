@@ -55,3 +55,66 @@ export const api = {
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: (path: string) => request(path, { method: "DELETE" }),
 };
+
+/** POST SSE (text/event-stream); parses `data: {...}` lines (BL-101). */
+export async function postSse(
+  path: string,
+  body: unknown,
+  onData: (obj: Record<string, unknown>) => void
+): Promise<void> {
+  const url = `${API_BASE}${path}`;
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
+  const token = getToken();
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+      try {
+        await ensureAuth({ forceRefresh: true });
+        return postSse(path, body, onData);
+      } catch {
+        /* fall through */
+      }
+    }
+    const err = await res.json().catch(() => ({}));
+    const detail = (err as { detail?: unknown }).detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : `API error: ${res.status} ${res.statusText}`;
+    throw new Error(message);
+  }
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const block of parts) {
+      for (const line of block.split("\n")) {
+        const t = line.trim();
+        if (!t.startsWith("data:")) continue;
+        const raw = t.slice(5).trim();
+        try {
+          const obj = JSON.parse(raw) as Record<string, unknown>;
+          onData(obj);
+        } catch {
+          /* ignore malformed chunk */
+        }
+      }
+    }
+  }
+}

@@ -34,6 +34,47 @@ class NotePackageListResponse(PaginatedResponse[NotePackageResponse]):
     pass
 
 
+class TextAssetCreate(BaseSchema):
+    asset_role: Literal["title", "body", "first_comment", "hashtag", "cta", "cover_text"]
+    content: str
+    language: str = "zh-CN"
+    version: int = 1
+
+
+class ImageAssetCreate(BaseSchema):
+    asset_role: str
+    image_url: str = ""
+    prompt_version: str | None = "v1"
+    metadata_json: dict[str, Any] | None = None
+
+
+class NotePackageCreate(BaseSchema):
+    merchant_id: UUID
+    product_id: UUID
+    asset_pack_id: UUID | None = None
+    generation_job_id: UUID | None = None
+    source_mode: Literal["daily_auto", "on_demand", "campaign"] = "on_demand"
+    objective: str = "seeding"
+    persona: str | None = None
+    style_family: str | None = None
+    compliance_status: Literal["pending", "passed", "failed", "review_needed"] = "pending"
+    ranking_score: float | None = None
+    review_status: Literal["pending", "approved", "rejected", "queued", "live"] = "pending"
+    text_assets: list[TextAssetCreate] = []
+    image_assets: list[ImageAssetCreate] = []
+
+
+class NotePackagePatch(BaseSchema):
+    review_status: Literal["pending", "approved", "rejected", "queued", "live"] | None = None
+    ranking_score: float | None = None
+    expected_updated_at: datetime | None = None
+
+
+class TextAssetPatch(BaseSchema):
+    content: str
+    expected_updated_at: datetime | None = None
+
+
 # ---------------------------------------------------------------------------
 # Text Assets
 # ---------------------------------------------------------------------------

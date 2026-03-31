@@ -3,8 +3,8 @@ from fastapi import APIRouter
 from src.api.v1.endpoints import (
     agent_teams,
     analytics,
-    auth,
     assets,
+    auth,
     chat,
     export,
     generation,
@@ -13,6 +13,7 @@ from src.api.v1.endpoints import (
     personas,
     products,
     review,
+    text_assets,
 )
 
 api_router = APIRouter()
@@ -23,6 +24,7 @@ api_router.include_router(products.router, prefix="/products", tags=["products"]
 api_router.include_router(assets.router, prefix="/asset-packs", tags=["assets"])
 api_router.include_router(generation.router, prefix="/generate", tags=["generation"])
 api_router.include_router(note_packages.router, prefix="/note-packages", tags=["note-packages"])
+api_router.include_router(text_assets.router, prefix="/text-assets", tags=["text-assets"])
 api_router.include_router(review.router, prefix="/review", tags=["review"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

@@ -1,28 +1,77 @@
+import json
 import logging
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
+from src.agents.llm_client import llm_client
+from src.core.database import async_session_factory, get_db
 from src.core.security import verify_token
-from src.schemas import ChatMessageRequest, ChatMessageResponse, NotePackageResponse
-from src.services import generation_service
+from src.schemas import (
+    ChatHistoryMessage,
+    ChatMessageRequest,
+    ChatMessageResponse,
+    ChatStreamRequest,
+    NotePackageResponse,
+)
+from src.services import chat_service, generation_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _parse_uuid(value: str, field: str) -> UUID:
+    try:
+        return UUID(value)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid {field}") from e
+
+
+def _assert_merchant(merchant_id: UUID, token: dict) -> None:
+    if str(merchant_id) != str(token.get("sub")):
+        raise HTTPException(status_code=403, detail="Cannot access another merchant's data")
+
+
+@router.get("/messages", response_model=list[ChatHistoryMessage])
+async def list_chat_messages(
+    merchant_id: UUID,
+    session_id: UUID,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    token: dict = Depends(verify_token),
+):
+    """BL-101: paginated chat history for a session."""
+    _assert_merchant(merchant_id, token)
+    rows = await chat_service.list_messages(
+        db, merchant_id=merchant_id, session_id=session_id, limit=limit
+    )
+    return [
+        ChatHistoryMessage(
+            id=r.id,
+            role=r.role,
+            content=r.content,
+            created_at=r.created_at,
+            metadata_json=r.metadata_json,
+        )
+        for r in rows
+    ]
 
 
 @router.post("/message", response_model=ChatMessageResponse)
 async def send_chat_message(
     body: ChatMessageRequest,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
     """Send a free-text message to the Founder Copilot and run the generation pipeline."""
     try:
         merchant_uuid = UUID(body.merchant_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid merchant_id format")
+    _assert_merchant(merchant_uuid, token)
 
     try:
         result = await generation_service.run_on_demand_generation(
@@ -31,7 +80,7 @@ async def send_chat_message(
             user_message=body.message,
         )
     except Exception as e:
-        logging.getLogger(__name__).exception("Chat generation failed")
+        logger.exception("Chat generation failed")
         return ChatMessageResponse(
             response=f"生成过程遇到问题：{getattr(e, 'message', str(e))}。请检查 API 日志或稍后重试。",
             intent="error",
@@ -64,4 +113,111 @@ async def send_chat_message(
         intent=intent,
         structured_job=structured_job,
         note_packages=note_packages,
+    )
+
+
+async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIterator[str]:
+    merchant_uuid = _parse_uuid(body.merchant_id, "merchant_id")
+    session_uuid = _parse_uuid(body.session_id, "session_id")
+    _assert_merchant(merchant_uuid, token)
+
+    product_id: UUID | None = None
+    if body.product_id:
+        product_id = _parse_uuid(body.product_id, "product_id")
+
+    meta_out: dict = {}
+
+    async with async_session_factory() as db:
+        await chat_service.append_message(
+            db,
+            merchant_id=merchant_uuid,
+            session_id=session_uuid,
+            role="user",
+            content=body.message,
+        )
+
+    yield f"data: {json.dumps({'type': 'start'}, ensure_ascii=False)}\n\n"
+
+    system_preamble = (
+        "你是小红书商家的创作顾问。根据用户一句话需求，先用一两句话友好确认理解，"
+        "并说明接下来会为其生成笔记草案（语气轻松专业，纯中文）。"
+    )
+    try:
+        async for chunk in llm_client.chat_completion_stream(
+            system_prompt=system_preamble,
+            user_prompt=body.message,
+            max_tokens=500,
+        ):
+            yield f"data: {json.dumps({'type': 'token', 'text': chunk}, ensure_ascii=False)}\n\n"
+    except Exception as e:
+        logger.warning("Chat stream preamble failed: %s", e)
+        yield f"data: {json.dumps({'type': 'token', 'text': '正在生成内容，请稍候…'}, ensure_ascii=False)}\n\n"
+
+    try:
+        async with async_session_factory() as db:
+            result = await generation_service.run_on_demand_generation(
+                db=db,
+                merchant_id=merchant_uuid,
+                product_id=product_id,
+                user_message=body.message,
+                objective=body.objective,
+            )
+    except Exception as e:
+        logger.exception("Chat stream pipeline failed")
+        err_payload = {"type": "error", "message": str(e)}
+        yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
+        async with async_session_factory() as db:
+            await chat_service.append_message(
+                db,
+                merchant_id=merchant_uuid,
+                session_id=session_uuid,
+                role="assistant",
+                content=f"生成失败：{e}",
+                metadata={"error": True},
+            )
+        return
+
+    response_text = result.get("response_to_user", "")
+    if not response_text:
+        if result.get("error"):
+            response_text = f"生成遇到问题：{result['error']}"
+        elif result.get("note_content"):
+            response_text = "内容已生成。你可以在「待审核」中查看笔记包。"
+        else:
+            response_text = "请求已处理。"
+
+    np_id = result.get("note_package_id")
+    meta_out["note_package_id"] = np_id
+    meta_out["generation_job_id"] = result.get("generation_job_id")
+
+    async with async_session_factory() as db:
+        await chat_service.append_message(
+            db,
+            merchant_id=merchant_uuid,
+            session_id=session_uuid,
+            role="assistant",
+            content=response_text,
+            metadata=meta_out or None,
+        )
+
+    done = {
+        "type": "done",
+        "response": response_text,
+        "note_package_id": np_id,
+        "generation_job_id": result.get("generation_job_id"),
+        "error": result.get("error"),
+    }
+    yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n"
+
+
+@router.post("/stream")
+async def chat_stream(
+    body: ChatStreamRequest,
+    token: dict = Depends(verify_token),
+):
+    """BL-101: SSE stream (preamble tokens + pipeline + done payload)."""
+    return StreamingResponse(
+        _chat_stream_events(body, token),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

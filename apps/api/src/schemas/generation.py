@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import Field
 
 from .common import BaseSchema
+from .note_package import NotePackageResponse
 
 
 class GenerationRequest(BaseSchema):
@@ -58,3 +59,10 @@ class GenerationAsyncStartResponse(BaseSchema):
     run_id: str
     status: Literal["pending"] = "pending"
     mode: Literal["async"] = "async"
+
+
+class GenerationJobResultResponse(BaseSchema):
+    """Payload when a job has finished (BL-111)."""
+
+    job: GenerationJobResponse
+    note_package: NotePackageResponse | None = None
