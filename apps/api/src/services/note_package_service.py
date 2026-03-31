@@ -39,30 +39,29 @@ async def list_note_packages(
     offset: int,
     review_status: str | None = None,
     source_mode: str | None = None,
+    sort: str = "recent",
 ) -> tuple[list[NotePackage], int]:
-    base = select(NotePackage).where(NotePackage.merchant_id == merchant_id)
-    count_base = (
-        select(func.count())
-        .select_from(NotePackage)
-        .where(NotePackage.merchant_id == merchant_id)
-    )
-
+    conditions = [NotePackage.merchant_id == merchant_id]
     if review_status is not None:
-        base = base.where(NotePackage.review_status == review_status)
-        count_base = count_base.where(NotePackage.review_status == review_status)
+        conditions.append(NotePackage.review_status == review_status)
     if source_mode is not None:
-        base = base.where(NotePackage.source_mode == source_mode)
-        count_base = count_base.where(NotePackage.source_mode == source_mode)
+        conditions.append(NotePackage.source_mode == source_mode)
 
-    total = (await db.execute(count_base)).scalar_one()
+    count_stmt = select(func.count()).select_from(NotePackage).where(*conditions)
+    total = (await db.execute(count_stmt)).scalar_one()
 
-    items_stmt = (
-        base.order_by(NotePackage.ranking_score.desc().nulls_last())
-        .limit(limit)
-        .offset(offset)
+    base = (
+        select(NotePackage)
+        .where(*conditions)
+        .options(selectinload(NotePackage.product))
     )
-    items = list((await db.execute(items_stmt)).scalars().all())
+    if sort == "ranking":
+        order = NotePackage.ranking_score.desc().nulls_last()
+    else:
+        order = NotePackage.created_at.desc()
 
+    items_stmt = base.order_by(order).limit(limit).offset(offset)
+    items = list((await db.execute(items_stmt)).scalars().all())
     return items, total
 
 

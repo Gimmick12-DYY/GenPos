@@ -6,7 +6,6 @@ from uuid import UUID
 
 from .common import BaseSchema, PaginatedResponse
 
-
 # ---------------------------------------------------------------------------
 # Note Package
 # ---------------------------------------------------------------------------
@@ -18,7 +17,8 @@ class NotePackageResponse(BaseSchema):
     asset_pack_id: UUID | None
     generation_job_id: UUID | None
     source_mode: Literal["daily_auto", "on_demand", "campaign"]
-    objective: Literal["seeding", "conversion", "awareness", "engagement"]
+    # Stored value may be English enums or Chinese labels from generation
+    objective: str
     persona: str | None
     style_family: str | None
     compliance_status: Literal["pending", "passed", "failed", "review_needed"]
@@ -26,6 +26,7 @@ class NotePackageResponse(BaseSchema):
     review_status: Literal["pending", "approved", "rejected", "queued", "live"]
     created_at: datetime
     updated_at: datetime
+    product_name: str | None = None
 
 
 class NotePackageListResponse(PaginatedResponse[NotePackageResponse]):
