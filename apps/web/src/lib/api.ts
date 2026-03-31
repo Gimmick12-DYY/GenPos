@@ -53,7 +53,7 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: (path: string) => request(path, { method: "DELETE" }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
 /** POST SSE (text/event-stream); parses `data: {...}` lines (BL-101). */
