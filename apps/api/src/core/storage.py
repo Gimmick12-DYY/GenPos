@@ -7,6 +7,25 @@ from botocore.config import Config as BotoConfig
 from src.core.config import settings
 
 
+def client_facing_asset_url(url: str | None) -> str | None:
+    """Rewrite stored `{endpoint}/{bucket}/key` URLs for browser access.
+
+    R2/S3 API endpoints are not publicly readable; set S3_PUBLIC_BASE_URL to your public bucket
+    URL (or CDN) so list/detail responses return loadable image URLs.
+    """
+    if url is None or not str(url).strip():
+        return url
+    u = str(url).strip()
+    pub = settings.s3_public_base_url.strip()
+    if not pub:
+        return u
+    marker = f"/{settings.s3_bucket}/"
+    if marker not in u:
+        return u
+    suffix = u.split(marker, 1)[1]
+    return f"{pub.rstrip('/')}/{settings.s3_bucket}/{suffix}"
+
+
 class StorageService:
     """S3-compatible object storage client for asset uploads."""
 
@@ -20,6 +39,13 @@ class StorageService:
             region_name="us-east-1",
         )
         self._bucket = settings.s3_bucket
+
+    def object_url(self, object_key: str) -> str:
+        """URL returned after upload and in API responses (uses public base when configured)."""
+        pub = settings.s3_public_base_url.strip()
+        if pub:
+            return f"{pub.rstrip('/')}/{self._bucket}/{object_key}"
+        return f"{settings.s3_endpoint.rstrip('/')}/{self._bucket}/{object_key}"
 
     def ensure_bucket(self) -> None:
         """Create the bucket if it doesn't exist."""
@@ -50,7 +76,7 @@ class StorageService:
             ContentType=content_type,
         )
 
-        return f"{settings.s3_endpoint}/{self._bucket}/{object_key}"
+        return self.object_url(object_key)
 
     def get_presigned_url(self, object_key: str, expires_in: int = 3600) -> str:
         """Generate a presigned URL for downloading an asset."""

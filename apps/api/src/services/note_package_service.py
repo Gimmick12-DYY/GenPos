@@ -8,8 +8,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.core.storage import client_facing_asset_url
 from src.models import ImageAsset, NotePackage, ReviewEvent, TextAsset
-from src.schemas.note_package import NotePackageCreate, NotePackagePatch, NotePackageResponse, TextAssetPatch
+from src.schemas.note_package import (
+    ImageAssetResponse,
+    NotePackageCreate,
+    NotePackageDetailResponse,
+    NotePackagePatch,
+    NotePackageResponse,
+    TextAssetPatch,
+)
 
 _COVER_ROLE_ORDER = (
     "cover",
@@ -34,11 +42,34 @@ def pick_cover_url(pkg: NotePackage) -> str | None:
     return None
 
 
+def image_assets_for_api(pkg: NotePackage) -> list[ImageAssetResponse]:
+    """Image rows with browser-loadable URLs when S3_PUBLIC_BASE_URL is set."""
+    return [
+        ImageAssetResponse.model_validate(ia, from_attributes=True).model_copy(
+            update={"image_url": client_facing_asset_url(ia.image_url) or (ia.image_url or "")}
+        )
+        for ia in (pkg.image_assets or [])
+    ]
+
+
+def detail_with_client_image_urls(
+    pkg: NotePackage, base: NotePackageDetailResponse
+) -> NotePackageDetailResponse:
+    row = note_package_to_response(pkg)
+    return base.model_copy(
+        update={
+            "product_name": row.product_name,
+            "cover_url": row.cover_url,
+            "image_assets": image_assets_for_api(pkg),
+        }
+    )
+
+
 def note_package_to_response(pkg: NotePackage) -> NotePackageResponse:
     """Build API row; expects product and/or image_assets loaded when available."""
     row = NotePackageResponse.model_validate(pkg, from_attributes=True)
     pname = pkg.product.name if pkg.product is not None else None
-    cover = pick_cover_url(pkg)
+    cover = client_facing_asset_url(pick_cover_url(pkg))
     return row.model_copy(update={"product_name": pname, "cover_url": cover})
 
 

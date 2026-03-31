@@ -152,10 +152,11 @@ npm run dev
 | `S3_ACCESS_KEY`     | Yes      | `minioadmin`                      | S3 access key                  |
 | `S3_SECRET_KEY`     | Yes      | `minioadmin`                      | S3 secret key                  |
 | `S3_BUCKET`         | Yes      | `genpos-assets`                   | S3 bucket name                 |
+| `S3_PUBLIC_BASE_URL`| No       | *(empty)*                         | Public HTTPS origin for object reads (R2 public URL / CDN). If unset, API returns `S3_ENDPOINT` URLs — fine for MinIO locally, **broken in browser for private R2 API hostnames**. |
 | `JWT_SECRET`        | Yes      | `change-me-in-production`         | JWT signing secret             |
 | `JWT_ALGORITHM`     | No       | `HS256`                           | JWT algorithm                  |
 | `JWT_EXPIRE_MINUTES`| No       | `1440`                            | Token expiry (24h)             |
-| `OPENAI_API_KEY`    | Yes      | *(empty)*                         | OpenAI API key                 |
+| `OPENAI_API_KEY`    | Yes      | *(empty)*                         | OpenAI API key (set on **API and** any **Temporal worker** that runs generation) |
 | `TEMPORAL_HOST`     | No       | `localhost:7233`                  | Temporal server address        |
 | `CORS_ORIGINS`      | Yes      | `["http://localhost:3000"]`       | Allowed CORS origins (URL or JSON array) |
 | `DEBUG`             | No       | `false`                           | Enable debug logging           |
@@ -196,7 +197,13 @@ If the frontend shows this error when opening the app:
 5. **Chat shows "Failed to fetch" or "无法连接后端" when sending a message**  
    The first load may succeed (dev-token works) but POST /chat/message can still fail if: the API crashes during generation (check Railway logs for tracebacks), `OPENAI_API_KEY` is missing or invalid, or the request times out (e.g. Railway/proxy limit). Fix the cause and retry; the app now returns a clearer error when the API responds with an error body.
 
-6. **Reading Railway logs — common errors**  
+6. **Review thumbnails broken / grey boxes, but generation “succeeded”**  
+   The API stores images on R2/MinIO using `S3_ENDPOINT`. Browsers cannot use the Cloudflare **R2 S3 API** hostname to read objects unless the bucket is public under that host. Set **`S3_PUBLIC_BASE_URL`** to your R2 **public bucket URL** (e.g. `https://pub-xxxx.r2.dev`) or a CDN/custom domain that serves `GET` for `/{bucket}/…`. Redeploy the API. Existing rows keep the old URL in the DB; responses rewrite to the public base when the stored path contains `/{S3_BUCKET}/`.
+
+7. **OpenAI usage stays at zero**  
+   Confirm **`OPENAI_API_KEY`** is set on the service that runs the pipeline (direct API process **and** Temporal worker if you use `USE_TEMPORAL_*`). Ensure **`IMAGE_GENERATION_ENABLED=true`**. After a fix, Railway logs should include `Calling OpenAI images.generate …` when covers/carousels are generated.
+
+8. **Reading Railway logs — common errors**  
    When tracing `logs.*.log` or Railway dashboard logs:
    - **`429` / `insufficient_quota` (OpenAI)** — Your OpenAI API key has exceeded quota or billing is not set up. Fix at [platform.openai.com](https://platform.openai.com) (billing / usage).
    - **`Session is already flushing`** / **`cannot use Connection.transaction() in a manually started transaction`** — These came from running writer and designer in parallel on the same DB session; the pipeline now runs them sequentially. If you still see this on an older deploy, redeploy the latest API.

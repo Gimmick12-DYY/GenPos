@@ -74,6 +74,7 @@ async def generate_image_bytes(
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
     model = settings.image_gen_model
+    logger.info("Calling OpenAI images.generate model=%s size=%s", model, size)
 
     extra_attempts: list[dict] = [
         {

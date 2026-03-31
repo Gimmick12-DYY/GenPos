@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     s3_access_key: str = "minioadmin"
     s3_secret_key: str = "minioadmin"
     s3_bucket: str = "genpos-assets"
+    s3_public_base_url: str = Field(
+        default="",
+        description=(
+            "Public HTTPS base for object reads in the browser. "
+            "Use R2 public bucket URL or a CDN origin; leave empty to use S3_ENDPOINT (OK for MinIO locally)."
+        ),
+    )
 
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"

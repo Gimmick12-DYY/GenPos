@@ -78,10 +78,7 @@ async def create_note_package_endpoint(
     _assert_merchant(body.merchant_id, token)
     pkg = await note_package_service.create_note_package(db, body)
     base = NotePackageDetailResponse.model_validate(pkg, from_attributes=True)
-    row = note_package_service.note_package_to_response(pkg)
-    return base.model_copy(
-        update={"product_name": row.product_name, "cover_url": row.cover_url}
-    )
+    return note_package_service.detail_with_client_image_urls(pkg, base)
 
 
 @router.patch("/{package_id}", response_model=NotePackageResponse)
@@ -151,10 +148,7 @@ async def get_note_package(
         raise HTTPException(status_code=404, detail="Note package not found")
     _assert_merchant(pkg.merchant_id, token)
     base = NotePackageDetailResponse.model_validate(pkg, from_attributes=True)
-    row = note_package_service.note_package_to_response(pkg)
-    return base.model_copy(
-        update={"product_name": row.product_name, "cover_url": row.cover_url}
-    )
+    return note_package_service.detail_with_client_image_urls(pkg, base)
 
 
 @router.get("/{package_id}/text-assets", response_model=list[TextAssetResponse])
@@ -182,4 +176,4 @@ async def get_image_assets(
     if pkg is None:
         raise HTTPException(status_code=404, detail="Note package not found")
     _assert_merchant(pkg.merchant_id, token)
-    return pkg.image_assets
+    return note_package_service.image_assets_for_api(pkg)
