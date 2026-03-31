@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Heart, MessageCircle, Bookmark, MoreHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
@@ -30,15 +31,19 @@ export function NotePackageCard({
   onReject,
   className,
 }: NotePackageCardProps) {
+  const [coverFailed, setCoverFailed] = useState(false);
+
   return (
     <Card className={cn("group overflow-hidden", className)}>
       {/* Cover image */}
       <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200">
-        {coverUrl ? (
+        {coverUrl && !coverFailed ? (
           <img
             src={coverUrl}
             alt={title}
             className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={() => setCoverFailed(true)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
