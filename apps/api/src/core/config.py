@@ -32,6 +32,10 @@ class Settings(BaseSettings):
         default=False,
         description="Run on-demand generation as a Temporal workflow (worker process required).",
     )
+    use_temporal_for_daily_batch: bool = Field(
+        default=False,
+        description="Run POST /generate/daily/run as a Temporal workflow (BL-201).",
+    )
 
     max_concurrent_generation_jobs: int = Field(
         default=10,

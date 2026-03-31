@@ -23,6 +23,15 @@ class GenerationRequest(BaseSchema):
 
 class DailyRunRequest(BaseSchema):
     merchant_id: UUID
+    packages_per_product: int = Field(default=1, ge=1, le=10)
+
+
+class DailyBatchAsyncStartResponse(BaseSchema):
+    """Daily batch enqueued on Temporal worker."""
+
+    workflow_id: str
+    run_id: str
+    mode: Literal["async"] = "async"
 
 
 class GenerationJobResponse(BaseSchema):

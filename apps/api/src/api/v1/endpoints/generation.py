@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -11,6 +11,7 @@ from src.core.database import async_session_factory, get_db
 from src.core.security import verify_token
 from src.models import GenerationJob, GenerationTask, NotePackage
 from src.schemas import (
+    DailyBatchAsyncStartResponse,
     DailyRunRequest,
     GenerationAsyncStartResponse,
     GenerationJobResponse,
@@ -21,6 +22,7 @@ from src.schemas import (
 )
 from src.services import generation_service, note_package_service
 from src.temporal.client import get_temporal_client
+from src.temporal.workflows.daily_batch import DailyBatchWorkflow
 from src.temporal.workflows.on_demand import OnDemandGenerationWorkflow
 
 router = APIRouter()
@@ -138,11 +140,34 @@ async def trigger_daily_generation(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    """Trigger daily generation for a merchant: all active products, 1 package per product (configurable)."""
+    """Trigger daily generation for a merchant: all active products (sync or Temporal)."""
+    if settings.use_temporal_for_daily_batch:
+        try:
+            client = await get_temporal_client()
+            wf_id = f"daily-batch-{body.merchant_id}-{uuid4().hex[:8]}"
+            handle = await client.start_workflow(
+                DailyBatchWorkflow.run,
+                {
+                    "merchant_id": str(body.merchant_id),
+                    "packages_per_product": body.packages_per_product,
+                },
+                id=wf_id,
+                task_queue=settings.temporal_task_queue,
+            )
+            return DailyBatchAsyncStartResponse(
+                workflow_id=handle.id,
+                run_id=handle.first_execution_run_id,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Temporal unavailable: {exc}",
+            ) from exc
+
     result = await generation_service.run_daily_batch(
         db,
         merchant_id=body.merchant_id,
-        packages_per_product=1,
+        packages_per_product=body.packages_per_product,
         max_concurrent=1,
     )
     return result

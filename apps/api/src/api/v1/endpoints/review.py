@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -37,12 +38,20 @@ async def get_review_queue_today(
     merchant_id: UUID,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    for_date: date | None = Query(
+        None,
+        description="Calendar day in Asia/Shanghai (default: today); filters daily_auto slate.",
+    ),
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(verify_token),
 ):
-    """Get today's recommendation queue (pending packages ranked by score)."""
+    """今日推荐: pending daily_auto packages for the given Shanghai calendar day."""
     items, total = await review_service.get_review_queue_today(
-        db, merchant_id=merchant_id, limit=limit, offset=offset
+        db,
+        merchant_id=merchant_id,
+        limit=limit,
+        offset=offset,
+        for_date=for_date,
     )
     out = [note_package_service.note_package_to_response(p) for p in items]
     return ReviewQueueResponse(items=out, total=total, limit=limit, offset=offset)

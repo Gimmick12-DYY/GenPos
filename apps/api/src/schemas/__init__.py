@@ -9,6 +9,7 @@ from .merchant import (
 from .product import ProductCreate, ProductListResponse, ProductResponse, ProductUpdate
 from .asset import AssetListResponse, AssetPackCreate, AssetPackResponse, AssetResponse
 from .generation import (
+    DailyBatchAsyncStartResponse,
     DailyRunRequest,
     GenerationAsyncStartResponse,
     GenerationJobResponse,
@@ -89,6 +90,7 @@ __all__ = [
     # generation
     "GenerationRequest",
     "DailyRunRequest",
+    "DailyBatchAsyncStartResponse",
     "GenerationAsyncStartResponse",
     "GenerationJobResponse",
     "GenerationJobResultResponse",
