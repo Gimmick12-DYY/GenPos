@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { NotePackageCard } from "@/components/note-package-card";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
+import { Card } from "@/components/ui/card";
 import { Sparkles, TrendingUp, Eye, CalendarDays, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -207,101 +209,96 @@ export default function DashboardPage() {
 
   if (error && !queue && !loading) {
     return (
-      <div className="mx-auto max-w-7xl p-6 lg:p-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+      <PageShell>
+        <div className="rounded-2xl border border-red-200/80 bg-red-50/90 p-8 text-center text-sm text-red-900 shadow-sm">
           <p className="font-medium">加载失败</p>
           <p className="mt-1">{error}</p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      <div className="mb-8">
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold text-stone-900">今日推荐</h1>
-            <p className="text-sm text-stone-500">
-              当日自动批次生成的笔记（按 Asia/Shanghai
-              日历日）；与「一键生成」内容区分开
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-stone-600">
-            <CalendarDays className="h-4 w-4 text-stone-400" />
-            <span>日期</span>
-            <input
-              type="date"
-              value={pickDate}
-              onChange={(e) => setPickDate(e.target.value)}
-              className="rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => void runDailyBatch()}
-            disabled={runningBatch || !authReady}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary-dark hover:bg-primary/15 disabled:opacity-50"
-          >
-            <Play className="h-3.5 w-3.5" />
-            {runningBatch ? "运行中…" : "运行每日生成"}
-          </button>
-        </div>
+    <PageShell>
+      <PageHeader
+        icon={Sparkles}
+        title="今日推荐"
+        description="当日自动批次生成的笔记（按 Asia/Shanghai 日历日）；与「一键生成」内容区分开"
+      />
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
+          <CalendarDays className="h-4 w-4 text-stone-400" />
+          <span>日期</span>
+          <input
+            type="date"
+            value={pickDate}
+            onChange={(e) => setPickDate(e.target.value)}
+            className="input-surface h-9 rounded-xl px-3 py-1.5 text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => void runDailyBatch()}
+          disabled={runningBatch || !authReady}
+          className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary-dark shadow-sm transition-colors hover:bg-primary/15 disabled:opacity-50"
+        >
+          <Play className="h-3.5 w-3.5" />
+          {runningBatch ? "运行中…" : "运行每日生成"}
+        </button>
       </div>
 
       {error && queue && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <div className="mb-4 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
           {error}
         </div>
       )}
       {infoMessage && (
-        <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary-dark">
+        <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3 text-sm text-primary-dark shadow-sm">
           {infoMessage}
         </div>
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-4 rounded-xl border border-stone-200 bg-surface-raised p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
             <Sparkles className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-stone-900">
+            <p className="text-2xl font-bold tabular-nums tracking-tight text-stone-900">
               {loading ? "…" : total}
             </p>
             <p className="text-sm text-stone-500">今日待审（自动批次）</p>
           </div>
-        </div>
-        <div className="flex items-center gap-4 rounded-xl border border-stone-200 bg-surface-raised p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
-            <TrendingUp className="h-6 w-6 text-accent" />
+        </Card>
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-100/80 to-teal-50">
+            <TrendingUp className="h-6 w-6 text-teal-700" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-stone-900">{avgScore}</p>
+            <p className="text-2xl font-bold tabular-nums tracking-tight text-stone-900">
+              {avgScore}
+            </p>
             <p className="text-sm text-stone-500">平均评分</p>
           </div>
-        </div>
-        <div className="flex items-center gap-4 rounded-xl border border-stone-200 bg-surface-raised p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-            <Eye className="h-6 w-6 text-blue-500" />
+        </Card>
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-sky-50">
+            <Eye className="h-6 w-6 text-sky-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-stone-900">—</p>
+            <p className="text-2xl font-bold tabular-nums text-stone-900">—</p>
             <p className="text-sm text-stone-500">预估曝光</p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-stone-900">推荐笔记方案</h2>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-lg font-semibold tracking-tight text-stone-900">
+          推荐笔记方案
+        </h2>
         <Link
           href="/review"
-          className="text-sm font-medium text-primary transition-colors hover:text-primary-dark"
+          className="text-sm font-semibold text-primary transition-colors hover:text-primary-dark"
         >
           查看全部 →
         </Link>
@@ -312,16 +309,16 @@ export default function DashboardPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-80 animate-pulse rounded-xl border border-stone-200 bg-stone-100"
+              className="h-80 animate-pulse rounded-2xl border border-stone-200/80 bg-stone-100/80"
             />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-stone-200 bg-surface-raised py-16 text-center text-stone-500">
-          <p>该日暂无自动批次待审笔记</p>
-          <p className="mx-auto mt-2 max-w-md text-sm">
+        <div className="rounded-2xl border border-dashed border-stone-300/80 bg-surface-raised/80 py-16 text-center text-stone-500 shadow-sm">
+          <p className="font-medium text-stone-700">该日暂无自动批次待审笔记</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed">
             「今日推荐」只展示来源为每日自动任务（daily_auto）的包。请点击「运行每日生成」，或配置
-            Temporal / <code className="text-xs">POST /generate/daily/run</code>
+            Temporal / <code className="rounded bg-stone-100 px-1.5 py-0.5 text-xs">POST /generate/daily/run</code>
             。一键生成与对话产生的内容请在「待审核」查看。
           </p>
         </div>
@@ -349,6 +346,6 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

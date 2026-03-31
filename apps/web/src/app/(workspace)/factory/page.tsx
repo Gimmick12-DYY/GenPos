@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Factory, Search, MoreHorizontal } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { StatusBadge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -103,61 +104,55 @@ export default function FactoryPage() {
 
   if (authError && !authReady) {
     return (
-      <div className="mx-auto max-w-7xl p-6 lg:p-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+      <PageShell>
+        <div className="rounded-2xl border border-red-200/80 bg-red-50 p-8 text-center text-sm text-red-900 shadow-sm">
           {authError}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <Factory className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">内容工厂</h1>
-          <p className="text-sm text-stone-500">
-            查看和管理所有生成的笔记内容（共 {total} 条）
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={Factory}
+        title="内容工厂"
+        description={`查看和管理所有生成的笔记内容（共 ${total} 条）`}
+      />
 
       <div className="mb-6 flex items-center gap-3">
         <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索标题、产品、编号…"
-            className="h-9 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="input-surface h-10 w-full pl-10 pr-3 text-sm"
           />
         </div>
       </div>
 
       {listError && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-4 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
           {listError}
         </div>
       )}
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-xl border border-stone-200 bg-stone-100" />
+        <div className="h-64 animate-pulse rounded-2xl border border-stone-200/80 bg-stone-100/80" />
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-stone-200 bg-surface-raised py-16 text-center text-stone-500">
+        <div className="rounded-2xl border border-dashed border-stone-300/80 bg-surface-raised py-16 text-center text-stone-500 shadow-sm">
           <p>{rows.length === 0 ? "还没有生成的笔记包" : "没有匹配的结果"}</p>
           {!rows.length && (
             <p className="mt-1 text-sm">在「一键生成」中创建内容后会出现在这里</p>
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-stone-200 bg-surface-raised">
+        <div className="overflow-hidden rounded-2xl border border-stone-200/80 bg-surface-raised shadow-sm">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/50">
+              <tr className="border-b border-stone-200 bg-stone-50/80">
                 <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                   编号
                 </th>
@@ -237,6 +232,6 @@ export default function FactoryPage() {
           </table>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

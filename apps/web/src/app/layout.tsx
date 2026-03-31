@@ -27,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" className={`${inter.variable} ${notoSansSC.variable}`}>
-      <body className="min-h-screen bg-surface font-sans text-stone-900 antialiased">
+      <body className="min-h-screen bg-surface font-sans text-stone-900 antialiased [font-feature-settings:'cv02','cv03','cv04','cv11']">
         {children}
       </body>
     </html>

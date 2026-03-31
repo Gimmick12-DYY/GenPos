@@ -1,4 +1,5 @@
 import { Send, Calendar, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const distributionStats = [
@@ -18,19 +19,12 @@ const scheduledItems = [
 
 export default function DistributionPage() {
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <Send className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">投放中心</h1>
-          <p className="text-sm text-stone-500">
-            管理笔记发布排期和投放状态
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={Send}
+        title="投放中心"
+        description="管理笔记发布排期和投放状态"
+      />
 
       {/* Stats */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -82,6 +76,6 @@ export default function DistributionPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

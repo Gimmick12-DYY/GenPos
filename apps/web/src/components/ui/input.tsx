@@ -21,13 +21,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         id={id}
         className={cn(
-          "h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-900 placeholder:text-stone-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-red-400 focus:border-red-500 focus:ring-red-500/20",
+          "input-surface h-10 w-full px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50",
+          error && "border-red-300 focus:border-red-500 focus:ring-red-500/20",
           className,
         )}
         {...props}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   ),
 );

@@ -1,4 +1,5 @@
 import { Users, Search, Star, ExternalLink } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 
 const creators = [
@@ -12,27 +13,19 @@ const creators = [
 
 export default function CreatorsPage() {
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <Users className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">达人合作</h1>
-          <p className="text-sm text-stone-500">
-            发现和管理蒲公英达人合作关系
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={Users}
+        title="达人合作"
+        description="发现和管理蒲公英达人合作关系"
+      />
 
-      {/* Search */}
-      <div className="mb-6 relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+      <div className="relative mb-6">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input
           type="text"
-          placeholder="搜索达人..."
-          className="h-10 w-full max-w-md rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          placeholder="搜索达人…"
+          className="input-surface h-11 w-full max-w-md pl-10 pr-3 text-sm"
         />
       </div>
 
@@ -75,6 +68,6 @@ export default function CreatorsPage() {
           </Card>
         ))}
       </div>
-    </div>
+    </PageShell>
   );
 }

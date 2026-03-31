@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Plus, Pencil, Loader2, X } from "lucide-react";
+import { Package, Plus, Pencil, Loader2, X, Search } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,38 +122,33 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-            <Package className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-stone-900">我的产品库</h1>
-            <p className="text-sm text-stone-500">
-              管理产品信息，关联生成的笔记内容
-            </p>
-          </div>
-        </div>
-        <Button onClick={openAdd}>
-          <Plus className="h-4 w-4" />
-          添加产品
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={Package}
+        title="我的产品库"
+        description="管理产品信息，关联生成的笔记内容"
+        actions={
+          <Button onClick={openAdd}>
+            <Plus className="h-4 w-4" />
+            添加产品
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
           {error}
         </div>
       )}
 
-      <div className="mb-6 relative">
+      <div className="relative mb-6">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input
           type="text"
-          placeholder="搜索产品名称或分类..."
+          placeholder="搜索产品名称或分类…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-10 w-full max-w-md rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="input-surface h-10 w-full max-w-md pl-10 pr-3 text-sm"
         />
       </div>
 
@@ -208,8 +204,8 @@ export default function ProductsPage() {
 
       {/* Add/Edit modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-stone-200/80 bg-white shadow-2xl shadow-stone-900/20">
             <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-stone-900">
                 {modalOpen === "add" ? "添加产品" : "编辑产品"}
@@ -243,7 +239,7 @@ export default function ProductsPage() {
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="input-surface w-full rounded-xl px-3 py-2 text-sm"
                   placeholder="产品卖点、适用人群等"
                 />
               </div>
@@ -260,6 +256,6 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

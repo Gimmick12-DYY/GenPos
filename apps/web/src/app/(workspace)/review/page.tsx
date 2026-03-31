@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { NotePackageCard } from "@/components/note-package-card";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -310,59 +311,55 @@ export default function ReviewPage() {
 
   if (authError && !authReady) {
     return (
-      <div className="mx-auto max-w-7xl p-6 lg:p-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+      <PageShell>
+        <div className="rounded-2xl border border-red-200/80 bg-red-50 p-8 text-center text-sm text-red-900 shadow-sm">
           {authError}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      <div className="mb-8 flex flex-wrap items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <ClipboardCheck className="h-5 w-5 text-white" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-stone-900">待审核</h1>
-          <p className="text-sm text-stone-500">
-            审核 AI 生成的笔记方案；看板覆盖待审 → 通过 → 排期 → 发布
-          </p>
-        </div>
-        <div className="flex rounded-lg bg-stone-100 p-0.5">
-          <button
-            type="button"
-            onClick={() => setLayout("list")}
-            className={cn(
-              "flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium",
-              layout === "list"
-                ? "bg-surface-raised text-stone-900 shadow-sm"
-                : "text-stone-500",
-            )}
-          >
-            <List className="h-4 w-4" />
-            列表
-          </button>
-          <button
-            type="button"
-            onClick={() => setLayout("kanban")}
-            className={cn(
-              "flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium",
-              layout === "kanban"
-                ? "bg-surface-raised text-stone-900 shadow-sm"
-                : "text-stone-500",
-            )}
-          >
-            <LayoutGrid className="h-4 w-4" />
-            看板
-          </button>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={ClipboardCheck}
+        title="待审核"
+        description="审核 AI 生成的笔记方案；看板覆盖待审 → 通过 → 排期 → 发布"
+        actions={
+          <div className="flex rounded-xl bg-stone-100/90 p-1 ring-1 ring-stone-200/70">
+            <button
+              type="button"
+              onClick={() => setLayout("list")}
+              className={cn(
+                "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                layout === "list"
+                  ? "bg-surface-raised text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              <List className="h-4 w-4" />
+              列表
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayout("kanban")}
+              className={cn(
+                "flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                layout === "kanban"
+                  ? "bg-surface-raised text-stone-900 shadow-sm"
+                  : "text-stone-500 hover:text-stone-700",
+              )}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              看板
+            </button>
+          </div>
+        }
+      />
 
       {layout === "list" && (
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-1 rounded-lg bg-stone-100 p-1">
+          <div className="flex gap-1 rounded-xl bg-stone-100/90 p-1 ring-1 ring-stone-200/70">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -410,7 +407,7 @@ export default function ReviewPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索笔记…"
-                className="h-9 w-60 rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="input-surface h-9 w-60 pl-9 pr-3 text-sm"
               />
             </div>
             <button
@@ -447,7 +444,7 @@ export default function ReviewPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索看板…"
-                className="h-9 w-60 rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="input-surface h-9 w-60 pl-9 pr-3 text-sm"
               />
             </div>
           </div>
@@ -638,14 +635,14 @@ export default function ReviewPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-stone-950/50 backdrop-blur-[2px]"
             aria-label="关闭"
             onClick={() => {
               setDetailId(null);
               setEditTitleId(null);
             }}
           />
-          <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-5 shadow-xl sm:rounded-2xl">
+          <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-stone-200/80 bg-white p-5 shadow-2xl shadow-stone-900/15 sm:rounded-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-stone-900">文案变体</h3>
               <button
@@ -722,6 +719,6 @@ export default function ReviewPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

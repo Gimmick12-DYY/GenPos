@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { TagInput } from "@/components/ui/tag-input";
 import { NotePackageCard } from "@/components/note-package-card";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -401,12 +402,12 @@ export default function GeneratePage() {
 
   if (authError && !authReady) {
     return (
-      <div className="mx-auto max-w-5xl p-6 lg:p-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+      <PageShell className="max-w-5xl">
+        <div className="rounded-2xl border border-red-200/80 bg-red-50 p-8 text-center text-sm text-red-900 shadow-sm">
           <p className="font-medium">无法继续</p>
           <p className="mt-1">{authError}</p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -416,21 +417,15 @@ export default function GeneratePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl p-6 lg:p-8">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <Wand2 className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">一键生成</h1>
-          <p className="text-sm text-stone-500">
-            配置参数，AI为您生成完整的小红书笔记方案
-          </p>
-        </div>
-      </div>
+    <PageShell className="max-w-5xl">
+      <PageHeader
+        icon={Wand2}
+        title="一键生成"
+        description="配置参数，AI 为您生成完整的小红书笔记方案"
+      />
 
       {createdPackage && (
-        <div className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50/80 p-6">
+        <div className="mb-8 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 p-6 shadow-sm">
           <p className="mb-4 text-sm font-medium text-emerald-900">
             已生成笔记方案，可在此快速预览或前往待审核处理
           </p>
@@ -462,19 +457,19 @@ export default function GeneratePage() {
       )}
 
       {submitError && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-6 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
           {submitError}
         </div>
       )}
 
       {productsError && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
           产品列表加载失败：{productsError}
         </div>
       )}
 
       {authReady && !productsLoading && products.length === 0 && !productsError && (
-        <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+        <div className="mb-6 rounded-2xl border border-stone-200/80 bg-stone-50 px-4 py-3 text-sm text-stone-800 shadow-sm">
           还没有可用产品。请先到「
           <Link href="/products" className="font-medium text-primary underline">
             我的产品库
@@ -484,7 +479,7 @@ export default function GeneratePage() {
       )}
 
       {resultInfo && (
-        <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-900">
+        <div className="mb-6 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950 shadow-sm">
           {resultInfo}{" "}
           <Link href="/review" className="font-medium text-primary underline">
             去待审核
@@ -562,7 +557,7 @@ export default function GeneratePage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="space-y-6">
-            <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
+            <div className="rounded-2xl border border-stone-200/80 bg-surface-raised p-6 shadow-sm">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
                 基础设置
               </h3>
@@ -659,7 +654,7 @@ export default function GeneratePage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
+            <div className="rounded-2xl border border-stone-200/80 bg-surface-raised p-6 shadow-sm">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
                 风格选择
               </h3>
@@ -701,7 +696,7 @@ export default function GeneratePage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
+            <div className="rounded-2xl border border-stone-200/80 bg-surface-raised p-6 shadow-sm">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
                 内容调整
               </h3>
@@ -769,6 +764,6 @@ export default function GeneratePage() {
           </Button>
         </div>
       </form>
-    </div>
+    </PageShell>
   );
 }

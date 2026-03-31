@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Shield, Loader2 } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,44 +143,40 @@ export default function RulesPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <PageShell className="max-w-5xl">
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageShell>
     );
   }
 
   if (error && !merchant) {
     return (
-      <div className="mx-auto max-w-5xl p-6">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+      <PageShell className="max-w-5xl">
+        <div className="rounded-2xl border border-red-200/80 bg-red-50 p-8 text-sm text-red-900 shadow-sm">
           {error}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6 lg:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-            <Shield className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-stone-900">品牌规则</h1>
-            <p className="text-sm text-stone-500">
-              管理品牌信息与内容规范，AI 生成内容时将自动遵守
-            </p>
-          </div>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {saving ? "保存中…" : saved ? "已保存" : "保存"}
-        </Button>
-      </div>
+    <PageShell className="max-w-5xl">
+      <PageHeader
+        icon={Shield}
+        title="品牌规则"
+        description="管理品牌信息与内容规范，AI 生成内容时将自动遵守"
+        actions={
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {saving ? "保存中…" : saved ? "已保存" : "保存"}
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
           {error}
         </div>
       )}
@@ -209,7 +206,7 @@ export default function RulesPage() {
               <select
                 value={xhsAccountType}
                 onChange={(e) => setXhsAccountType(e.target.value)}
-                className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="input-surface h-10 w-full px-3 text-sm"
               >
                 {XHS_ACCOUNT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -259,7 +256,7 @@ export default function RulesPage() {
               <select
                 value={complianceLevel}
                 onChange={(e) => setComplianceLevel(e.target.value)}
-                className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="input-surface h-10 w-full px-3 text-sm"
               >
                 {COMPLIANCE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -271,7 +268,7 @@ export default function RulesPage() {
               <select
                 value={reviewMode}
                 onChange={(e) => setReviewMode(e.target.value)}
-                className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="input-surface h-10 w-full px-3 text-sm"
               >
                 {REVIEW_MODE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -285,7 +282,7 @@ export default function RulesPage() {
               value={bannedWordsStr}
               onChange={(e) => setBannedWordsStr(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="input-surface w-full rounded-xl px-3 py-2 text-sm placeholder:text-stone-400"
               placeholder="绝对化用语、未获批功效词等"
             />
           </div>
@@ -295,7 +292,7 @@ export default function RulesPage() {
               value={requiredClaimsStr}
               onChange={(e) => setRequiredClaimsStr(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="input-surface w-full rounded-xl px-3 py-2 text-sm placeholder:text-stone-400"
               placeholder="例如：成分说明、使用说明"
             />
           </div>
@@ -305,12 +302,12 @@ export default function RulesPage() {
               value={bannedClaimsStr}
               onChange={(e) => setBannedClaimsStr(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="input-surface w-full rounded-xl px-3 py-2 text-sm placeholder:text-stone-400"
               placeholder="例如：医疗功效、绝对化承诺"
             />
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

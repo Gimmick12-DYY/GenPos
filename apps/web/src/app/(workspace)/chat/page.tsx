@@ -218,7 +218,7 @@ export default function ChatPage() {
   if (authError && !authReady) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+        <div className="rounded-2xl border border-red-200/80 bg-red-50 p-8 text-center text-sm text-red-900 shadow-sm">
           <p className="font-medium">无法连接后端</p>
           <p className="mt-1">{authError}</p>
           <p className="mt-2 text-stone-500">
@@ -232,7 +232,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+        <div className="mx-auto max-w-3xl space-y-6 px-5 py-8">
           {messages
             .filter(
               (m) =>
@@ -263,10 +263,10 @@ export default function ChatPage() {
               <div className="flex max-w-[75%] flex-col gap-2">
                 <div
                   className={cn(
-                    "rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                    "rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
                     msg.role === "user"
-                      ? "rounded-br-md bg-primary text-white"
-                      : "rounded-bl-md border border-stone-200 bg-surface-raised text-stone-800",
+                      ? "rounded-br-md bg-gradient-to-br from-primary to-primary-dark text-white"
+                      : "rounded-bl-md border border-stone-200/80 bg-surface-raised text-stone-800",
                   )}
                 >
                   {msg.content.split("\n").map((line, i) => (
@@ -302,7 +302,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="border-t border-stone-200 bg-surface-raised px-4 py-4">
+      <div className="border-t border-stone-200/80 bg-surface-raised/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-surface-raised/80">
         <form
           onSubmit={(ev) => void handleSubmit(ev)}
           className="mx-auto flex max-w-3xl items-end gap-3"
@@ -315,13 +315,13 @@ export default function ChatPage() {
               onKeyDown={handleKeyDown}
               placeholder="输入你的需求，Shift+Enter换行..."
               rows={1}
-              className="max-h-32 min-h-[44px] w-full resize-none rounded-xl border border-stone-300 bg-white px-4 py-3 pr-12 text-sm text-stone-900 placeholder:text-stone-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="input-surface max-h-32 min-h-[44px] w-full resize-none rounded-2xl px-4 py-3 pr-12 text-sm text-stone-900 placeholder:text-stone-400"
             />
           </div>
           <button
             type="submit"
             disabled={!input.trim() || isTyping || !authReady}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-all hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-md shadow-primary/25 transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send className="h-4.5 w-4.5" />
           </button>

@@ -39,9 +39,14 @@ export function NotePackageCard({
   const [coverFailed, setCoverFailed] = useState(false);
 
   return (
-    <Card className={cn("group overflow-hidden", className)}>
+    <Card
+      className={cn(
+        "group overflow-hidden ring-1 ring-stone-100/80",
+        className,
+      )}
+    >
       {/* Cover image */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200">
+      <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200/90">
         {coverUrl && !coverFailed ? (
           <img
             src={coverUrl}
@@ -61,7 +66,7 @@ export function NotePackageCard({
 
         {/* Score badge */}
         {score !== undefined && (
-          <div className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-xs font-bold text-white backdrop-blur-sm">
+          <div className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-stone-900/75 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
             {score}
           </div>
         )}

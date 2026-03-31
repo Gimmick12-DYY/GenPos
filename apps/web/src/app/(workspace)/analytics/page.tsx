@@ -1,4 +1,5 @@
 import { BarChart3, TrendingUp, Eye, Heart, MessageCircle, Bookmark } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const kpis = [
@@ -18,19 +19,12 @@ const topNotes = [
 
 export default function AnalyticsPage() {
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
-          <BarChart3 className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">成效分析</h1>
-          <p className="text-sm text-stone-500">
-            查看内容表现数据和投放效果分析
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={BarChart3}
+        title="成效分析"
+        description="查看内容表现数据和投放效果分析"
+      />
 
       {/* KPI cards */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -60,7 +54,7 @@ export default function AnalyticsPage() {
           <h3 className="text-base font-semibold text-stone-900">趋势总览</h3>
         </CardHeader>
         <CardContent>
-          <div className="flex h-64 items-center justify-center rounded-lg bg-stone-50 border border-dashed border-stone-300">
+          <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-stone-300/80 bg-stone-50/80">
             <div className="text-center">
               <BarChart3 className="mx-auto mb-2 h-10 w-10 text-stone-300" />
               <p className="text-sm text-stone-400">图表区域</p>
@@ -106,6 +100,6 @@ export default function AnalyticsPage() {
           </table>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

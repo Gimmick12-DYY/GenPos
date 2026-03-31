@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
 const statusStyles = {
-  passed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  failed: "bg-red-50 text-red-700 border-red-200",
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  review_needed: "bg-blue-50 text-blue-700 border-blue-200",
-  draft: "bg-stone-100 text-stone-600 border-stone-200",
+  passed: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80",
+  failed: "bg-red-50 text-red-800 ring-1 ring-red-200/80",
+  pending: "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80",
+  review_needed: "bg-sky-50 text-sky-900 ring-1 ring-sky-200/80",
+  draft: "bg-stone-100 text-stone-700 ring-1 ring-stone-200/80",
 } as const;
 
 interface BadgeProps {
@@ -26,7 +26,7 @@ export function Badge({ status, children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
         statusStyles[status],
         className,
       )}

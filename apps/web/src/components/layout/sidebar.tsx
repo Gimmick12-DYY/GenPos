@@ -39,30 +39,28 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-stone-200 bg-surface-raised transition-all duration-300",
-        collapsed ? "w-[68px]" : "w-60",
+        "flex h-screen flex-col border-r border-sidenav-border bg-sidenav transition-all duration-300 ease-out",
+        collapsed ? "w-[72px]" : "w-[260px]",
       )}
     >
-      {/* Brand */}
-      <div className="flex h-16 items-center gap-2.5 border-b border-stone-100 px-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-light shadow-sm">
+      <div className="flex h-16 items-center gap-3 border-b border-sidenav-border px-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-black/20 ring-1 ring-white/15">
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-stone-900">
+            <h1 className="truncate text-lg font-bold tracking-tight text-white">
               GenPos
             </h1>
-            <p className="truncate text-[10px] leading-tight text-stone-400">
-              小红书AI工作台
+            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              小红书 · AI 工作台
             </p>
           </div>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4">
+        <ul className="space-y-0.5">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -74,10 +72,10 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                    "group flex items-center gap-3 rounded-xl border-l-[3px] py-2.5 pl-[9px] pr-3 text-sm font-medium transition-all duration-150",
                     isActive
-                      ? "bg-primary/10 text-primary-dark"
-                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+                      ? "border-primary bg-white/[0.07] text-white shadow-inner shadow-black/10"
+                      : "border-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-100",
                     collapsed && "justify-center px-0",
                   )}
                   title={collapsed ? item.label : undefined}
@@ -86,11 +84,13 @@ export function Sidebar() {
                     className={cn(
                       "h-[18px] w-[18px] shrink-0 transition-colors",
                       isActive
-                        ? "text-primary"
-                        : "text-stone-400 group-hover:text-stone-600",
+                        ? "text-primary-light"
+                        : "text-slate-500 group-hover:text-slate-300",
                     )}
                   />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {!collapsed && (
+                    <span className="truncate">{item.label}</span>
+                  )}
                 </Link>
               </li>
             );
@@ -98,11 +98,12 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-stone-100 p-3">
+      <div className="border-t border-sidenav-border p-2.5">
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center justify-center rounded-lg p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+          className="flex w-full items-center justify-center rounded-xl py-2.5 text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200"
+          aria-label={collapsed ? "展开侧栏" : "收起侧栏"}
         >
           {collapsed ? (
             <PanelLeftOpen className="h-4 w-4" />
