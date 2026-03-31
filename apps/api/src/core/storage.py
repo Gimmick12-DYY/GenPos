@@ -1,10 +1,13 @@
 import io
+import logging
 from uuid import uuid4
 
 import boto3
 from botocore.config import Config as BotoConfig
 
 from src.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def client_facing_asset_url(url: str | None) -> str | None:
@@ -69,14 +72,31 @@ class StorageService:
         file_ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "bin"
         object_key = f"{merchant_id}/{asset_pack_id}/{uuid4().hex}.{file_ext}"
 
-        self._client.put_object(
-            Bucket=self._bucket,
-            Key=object_key,
-            Body=io.BytesIO(file_content),
-            ContentType=content_type,
-        )
+        try:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=object_key,
+                Body=io.BytesIO(file_content),
+                ContentType=content_type,
+            )
+        except Exception:
+            logger.exception(
+                "S3 put_object failed bucket=%s key=%s endpoint=%s",
+                self._bucket,
+                object_key,
+                settings.s3_endpoint,
+            )
+            raise
 
-        return self.object_url(object_key)
+        url = self.object_url(object_key)
+        logger.info(
+            "storage uploaded bucket=%s key=%s bytes=%s url_prefix=%s",
+            self._bucket,
+            object_key,
+            len(file_content),
+            url[:80] + ("…" if len(url) > 80 else ""),
+        )
+        return url
 
     def get_presigned_url(self, object_key: str, expires_in: int = 3600) -> str:
         """Generate a presigned URL for downloading an asset."""

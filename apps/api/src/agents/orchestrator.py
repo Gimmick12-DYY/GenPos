@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 from uuid import UUID
@@ -262,13 +261,13 @@ class GenerationOrchestrator:
             if not planner_result.success:
                 return await self._fail_job(db, job, pipeline_log, planner_result.error or "Planner failed")
 
-            writer_task = self._run_agent_task(
+            # Sequential like run_on_demand: writer + designer share the same AsyncSession.
+            writer_result = await self._run_agent_task(
                 db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer"
             )
-            designer_task = self._run_agent_task(
+            designer_result = await self._run_agent_task(
                 db, job.id, self.designer, ctx, "image_gen", "cartoon_visual_designer"
             )
-            writer_result, designer_result = await asyncio.gather(writer_task, designer_task)
             pipeline_log.append({"agent": "xhs_note_writer", "success": writer_result.success})
             pipeline_log.append({"agent": "cartoon_visual_designer", "success": designer_result.success})
             if not writer_result.success:
