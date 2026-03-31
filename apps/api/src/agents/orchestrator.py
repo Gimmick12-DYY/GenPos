@@ -108,6 +108,7 @@ class GenerationOrchestrator:
         pipeline_log: list[dict] = []
 
         try:
+            copilot_output: dict | None = None
             # Step 1 — Founder Copilot (only for free-text input)
             if user_message and not ctx.structured_job:
                 copilot_result = await self._run_agent_task(
@@ -116,6 +117,7 @@ class GenerationOrchestrator:
                 pipeline_log.append({"agent": "founder_copilot", "success": copilot_result.success})
                 if not copilot_result.success:
                     return await self._fail_job(db, job, pipeline_log, copilot_result.error or "Copilot failed")
+                copilot_output = copilot_result.output
                 # Propagate user-facing response into structured_job for the return value
                 if copilot_result.output.get("response_to_user"):
                     ctx.structured_job["response_to_user"] = copilot_result.output["response_to_user"]
@@ -132,6 +134,47 @@ class GenerationOrchestrator:
                     "is_juguang": is_juguang,
                     "is_pugongying": is_pugongying,
                 }
+
+            # Free-text path: skip heavy pipeline when Copilot says this is not note generation,
+            # or when we have no product UUID (note packages cannot be saved without product_id).
+            if copilot_output is not None:
+                intent = str(copilot_output.get("intent", "generate_note"))
+                sj_prod: UUID | None = None
+                if isinstance(ctx.structured_job, dict):
+                    raw_pid = ctx.structured_job.get("product_id")
+                    if raw_pid not in (None, "", "null"):
+                        try:
+                            sj_prod = UUID(str(raw_pid))
+                        except ValueError:
+                            sj_prod = None
+                resolved_product_id = product_id or sj_prod
+                non_note_intent = intent in (
+                    "ask_question",
+                    "manage_assets",
+                    "export",
+                    "modify_existing",
+                )
+                if non_note_intent or resolved_product_id is None:
+                    job.status = "completed"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    reply = (copilot_output.get("response_to_user") or "").strip()
+                    if not reply and isinstance(ctx.structured_job, dict):
+                        reply = (ctx.structured_job.get("response_to_user") or "").strip()
+                    if not non_note_intent and not reply:
+                        reply = "请先在界面中选择要推广的产品后再生成笔记，以便保存封面与图集到待审核。"
+                    return {
+                        "generation_job_id": str(job.id),
+                        "response_to_user": reply,
+                        "pipeline_log": pipeline_log,
+                    }
+                if sj_prod is not None and product_id is None:
+                    product_id = sj_prod
+                    product = await db.get(Product, product_id)
+                    if product:
+                        ctx.product_name = product.name
+                        ctx.product_category = product.category
+                        ctx.product_description = product.description or ""
 
             # Step 2 — Strategy Planner
             planner_result = await self._run_agent_task(
