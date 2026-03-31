@@ -1,17 +1,24 @@
 "use client";
 
 import { useForm, Controller } from "react-hook-form";
-import { useState } from "react";
-import { Wand2, Sparkles, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { Wand2, Sparkles, Loader2, Leaf, Gift, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { TagInput } from "@/components/ui/tag-input";
+import { NotePackageCard } from "@/components/note-package-card";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { ensureAuth, getMerchantId } from "@/lib/auth";
+
+const FORM_STORAGE_KEY = "genpos_generate_draft_v1";
 
 interface GenerateFormData {
   product: string;
+  industry: string;
   targetAudience: string;
   targetScenario: string;
   objective: string;
@@ -23,6 +30,80 @@ interface GenerateFormData {
   requiredSellingPoints: string[];
   showPrice: boolean;
   ctaType: string;
+}
+
+interface ProductOption {
+  id: string;
+  name: string;
+}
+
+interface ProductListResponse {
+  items: Array<{ id: string; name: string; status: string }>;
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+interface GenerationAsyncStart {
+  mode: "async";
+  generation_job_id: string;
+  workflow_id: string;
+  run_id: string;
+  status: string;
+}
+
+interface GenerationJobResponse {
+  id: string;
+  status: string;
+}
+
+interface ReviewQueueItem {
+  id: string;
+  generation_job_id?: string | null;
+  style_family?: string | null;
+  ranking_score?: number | null;
+  compliance_status: string;
+  review_status: string;
+}
+
+interface ReviewQueueResponse {
+  items: ReviewQueueItem[];
+  total: number;
+}
+
+interface GenerationSyncResult {
+  generation_job_id?: string;
+  note_package_id?: string;
+  error?: string;
+  pipeline_log?: unknown;
+}
+
+function buildSpecialInstructions(data: GenerateFormData): string {
+  const parts: string[] = [];
+  if (data.industry.trim()) parts.push(`行业：${data.industry.trim()}`);
+  if (data.targetScenario.trim()) parts.push(`场景：${data.targetScenario.trim()}`);
+  parts.push(`语气风格：${data.tone}`);
+  if (data.bannedWords.length)
+    parts.push(`禁用词（勿出现）：${data.bannedWords.join("、")}`);
+  if (data.requiredSellingPoints.length)
+    parts.push(`必须提及的卖点：${data.requiredSellingPoints.join("、")}`);
+  parts.push(`CTA 导向：${data.ctaType}`);
+  parts.push(data.showPrice ? "笔记中可体现价格或价位感。" : "不要在正文中写具体价格数字。");
+  return parts.join("\n");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function complianceToCardStatus(
+  s: string
+): "passed" | "failed" | "pending" | "review_needed" | "draft" {
+  if (s === "passed") return "passed";
+  if (s === "failed") return "failed";
+  if (s === "review_needed") return "review_needed";
+  if (s === "pending") return "pending";
+  return "draft";
 }
 
 const objectives = [
@@ -82,45 +163,260 @@ const ctaOptions = [
   { value: "购买链接", label: "购买链接" },
 ];
 
-const productOptions = [
-  { value: "", label: "请选择产品" },
-  { value: "product-1", label: "水光精华液 30ml" },
-  { value: "product-2", label: "氨基酸洁面乳 120g" },
-  { value: "product-3", label: "防晒霜 SPF50+ 50ml" },
-];
+const defaultForm: GenerateFormData = {
+  product: "",
+  industry: "",
+  targetAudience: "",
+  targetScenario: "",
+  objective: "种草",
+  juguang: false,
+  pugongying: false,
+  style: "治愈系插画",
+  tone: "温柔种草",
+  bannedWords: [],
+  requiredSellingPoints: [],
+  showPrice: false,
+  ctaType: "收藏",
+};
 
 export default function GeneratePage() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const { register, control, handleSubmit, watch, setValue } =
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdPackage, setCreatedPackage] = useState<ReviewQueueItem | null>(
+    null
+  );
+  const [pollMessage, setPollMessage] = useState<string | null>(null);
+  const [resultInfo, setResultInfo] = useState<string | null>(null);
+
+  const { register, control, handleSubmit, watch, setValue, reset } =
     useForm<GenerateFormData>({
-      defaultValues: {
-        product: "",
-        targetAudience: "",
-        targetScenario: "",
-        objective: "种草",
-        juguang: false,
-        pugongying: false,
-        style: "治愈系插画",
-        tone: "温柔种草",
-        bannedWords: [],
-        requiredSellingPoints: [],
-        showPrice: false,
-        ctaType: "收藏",
-      },
+      defaultValues: defaultForm,
     });
 
   const selectedObjective = watch("objective");
   const selectedStyle = watch("style");
 
-  function onSubmit(data: GenerateFormData) {
-    setIsGenerating(true);
-    // Simulate generation
-    setTimeout(() => setIsGenerating(false), 3000);
+  useEffect(() => {
+    ensureAuth()
+      .then(() => setAuthReady(true))
+      .catch((e) => setAuthError(e instanceof Error ? e.message : "认证失败"));
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const merchantId = getMerchantId();
+    if (!merchantId) {
+      setProductsLoading(false);
+      return;
+    }
+    setProductsLoading(true);
+    api
+      .get<ProductListResponse>(
+        `/merchants/${merchantId}/products?limit=100&offset=0`
+      )
+      .then((res) => {
+        setProducts(
+          res.items
+            .filter((p) => p.status === "active" || p.status === "paused")
+            .map((p) => ({ id: p.id, name: p.name }))
+        );
+        setProductsError(null);
+      })
+      .catch((e) =>
+        setProductsError(
+          e instanceof Error ? e.message : "加载产品列表失败"
+        )
+      )
+      .finally(() => setProductsLoading(false));
+  }, [authReady]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(FORM_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<GenerateFormData>;
+        reset({ ...defaultForm, ...parsed });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [reset]);
+
+  useEffect(() => {
+    const sub = watch((data) => {
+      try {
+        sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+      } catch {
+        /* quota / private mode */
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [watch]);
+
+  const applyPreset = useCallback(
+    (preset: Partial<GenerateFormData>) => {
+      Object.entries(preset).forEach(([k, v]) => {
+        if (v !== undefined) {
+          setValue(k as keyof GenerateFormData, v as never, {
+            shouldDirty: true,
+          });
+        }
+      });
+    },
+    [setValue]
+  );
+
+  async function pollUntilJobComplete(
+    merchantId: string,
+    jobId: string
+  ): Promise<ReviewQueueItem | null> {
+    const maxAttempts = 180;
+    for (let i = 0; i < maxAttempts; i++) {
+      const job = await api.get<GenerationJobResponse>(
+        `/generate/jobs/${jobId}`
+      );
+      if (job.status === "failed") {
+        throw new Error("生成任务失败，请查看 API 日志或稍后重试。");
+      }
+      if (job.status === "completed") {
+        const queue = await api.get<ReviewQueueResponse>(
+          `/review/queue?merchant_id=${merchantId}&limit=30&offset=0`
+        );
+        const match = queue.items.find(
+          (p) => p.generation_job_id === jobId
+        );
+        return match ?? null;
+      }
+      await sleep(2000);
+    }
+    throw new Error("生成超时（超过约 6 分钟）。请稍后在「待审核」查看是否已完成。");
   }
+
+  async function onSubmit(data: GenerateFormData) {
+    setSubmitError(null);
+    setCreatedPackage(null);
+    setPollMessage(null);
+    setResultInfo(null);
+
+    if (!data.product) {
+      setSubmitError("请选择一个产品。");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      await ensureAuth();
+      const merchantId = getMerchantId();
+      if (!merchantId) {
+        setSubmitError("未获取到商户信息，请刷新页面重试。");
+        return;
+      }
+
+      const persona =
+        [data.targetAudience, data.tone].filter(Boolean).join(" · ") || "";
+
+      const body = {
+        merchant_id: merchantId,
+        product_id: data.product,
+        objective: data.objective,
+        persona: persona || undefined,
+        style_preference: data.style.slice(0, 64),
+        special_instructions: buildSpecialInstructions(data),
+        is_juguang: data.juguang,
+        is_pugongying: data.pugongying,
+      };
+
+      const res = await api.post<GenerationAsyncStart | GenerationSyncResult>(
+        "/generate/request",
+        body
+      );
+
+      if (
+        res &&
+        typeof res === "object" &&
+        "mode" in res &&
+        (res as GenerationAsyncStart).mode === "async"
+      ) {
+        const asyncRes = res as GenerationAsyncStart;
+        setPollMessage("任务已排队，正在生成，请稍候…");
+        try {
+          const pkg = await pollUntilJobComplete(
+            merchantId,
+            asyncRes.generation_job_id
+          );
+          setPollMessage(null);
+          if (pkg) {
+            setCreatedPackage(pkg);
+          } else {
+            setResultInfo(
+              "生成已完成。若未在此显示卡片，请到「待审核」查看最新笔记包。"
+            );
+          }
+        } catch (pollErr) {
+          setPollMessage(null);
+          throw pollErr;
+        }
+        return;
+      }
+
+      const sync = res as GenerationSyncResult;
+      if (sync.error) {
+        setSubmitError(sync.error);
+        return;
+      }
+      if (sync.note_package_id) {
+        const queue = await api.get<ReviewQueueResponse>(
+          `/review/queue?merchant_id=${merchantId}&limit=30&offset=0`
+        );
+        const pkg =
+          queue.items.find(
+            (p) => p.id === sync.note_package_id
+          ) ?? null;
+        if (pkg) setCreatedPackage(pkg);
+        else {
+          setCreatedPackage({
+            id: sync.note_package_id,
+            generation_job_id: sync.generation_job_id ?? null,
+            style_family: null,
+            ranking_score: null,
+            compliance_status: "pending",
+            review_status: "pending",
+          });
+        }
+      }
+    } catch (e) {
+      setSubmitError(
+        e instanceof Error ? e.message : "生成失败，请稍后重试。"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  if (authError && !authReady) {
+    return (
+      <div className="mx-auto max-w-5xl p-6 lg:p-8">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-800">
+          <p className="font-medium">无法继续</p>
+          <p className="mt-1">{authError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const productSelectOptions = [
+    { value: "", label: productsLoading ? "加载产品中…" : "请选择产品" },
+    ...products.map((p) => ({ value: p.id, label: p.name })),
+  ];
 
   return (
     <div className="mx-auto max-w-5xl p-6 lg:p-8">
-      {/* Page header */}
       <div className="mb-8 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-sm">
           <Wand2 className="h-5 w-5 text-white" />
@@ -133,9 +429,138 @@ export default function GeneratePage() {
         </div>
       </div>
 
+      {createdPackage && (
+        <div className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50/80 p-6">
+          <p className="mb-4 text-sm font-medium text-emerald-900">
+            已生成笔记方案，可在此快速预览或前往待审核处理
+          </p>
+          <div className="max-w-sm">
+            <NotePackageCard
+              title={
+                createdPackage.style_family
+                  ? `笔记 · ${createdPackage.style_family}`
+                  : "新笔记方案"
+              }
+              score={
+                createdPackage.ranking_score != null
+                  ? Math.round(createdPackage.ranking_score)
+                  : undefined
+              }
+              styleFamily={createdPackage.style_family ?? undefined}
+              complianceStatus={complianceToCardStatus(
+                createdPackage.compliance_status
+              )}
+            />
+          </div>
+          <Link
+            href="/review"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            前往待审核 →
+          </Link>
+        </div>
+      )}
+
+      {submitError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {submitError}
+        </div>
+      )}
+
+      {productsError && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          产品列表加载失败：{productsError}
+        </div>
+      )}
+
+      {authReady && !productsLoading && products.length === 0 && !productsError && (
+        <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+          还没有可用产品。请先到「
+          <Link href="/products" className="font-medium text-primary underline">
+            我的产品库
+          </Link>
+          」添加商品后再生成笔记。
+        </div>
+      )}
+
+      {resultInfo && (
+        <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-900">
+          {resultInfo}{" "}
+          <Link href="/review" className="font-medium text-primary underline">
+            去待审核
+          </Link>
+        </div>
+      )}
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        <span className="w-full text-xs font-medium text-stone-500">
+          快速模板
+        </span>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="gap-1"
+          onClick={() =>
+            applyPreset({
+              objective: "种草",
+              targetScenario: "节日大促、限时好礼、礼盒装心智",
+              tone: "闺蜜安利",
+              ctaType: "收藏",
+            })
+          }
+        >
+          <Gift className="h-4 w-4" />
+          节日促销
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="gap-1"
+          onClick={() =>
+            applyPreset({
+              objective: "品宣",
+              targetScenario: "新品上市、成分/卖点首秀",
+              tone: "专业测评",
+              requiredSellingPoints: ["新品", "核心成分"],
+            })
+          }
+        >
+          <Sparkles className="h-4 w-4" />
+          新品上架
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="gap-1"
+          onClick={() =>
+            applyPreset({
+              objective: "互动",
+              targetScenario: "真实使用反馈、复购理由",
+              tone: "温柔种草",
+              ctaType: "评论",
+            })
+          }
+        >
+          <Star className="h-4 w-4" />
+          用户好评
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1"
+          onClick={() => reset(defaultForm)}
+        >
+          <Leaf className="h-4 w-4" />
+          重置表单
+        </Button>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          {/* Left column — Core settings */}
           <div className="space-y-6">
             <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
@@ -144,9 +569,13 @@ export default function GeneratePage() {
               <div className="space-y-5">
                 <Select
                   label="产品"
-                  options={productOptions}
-                  placeholder="请选择产品"
-                  {...register("product")}
+                  options={productSelectOptions}
+                  {...register("product", { required: true })}
+                />
+                <Input
+                  label="行业"
+                  placeholder="例：护肤美妆、家居、食品"
+                  {...register("industry")}
                 />
                 <Input
                   label="目标人群"
@@ -159,7 +588,6 @@ export default function GeneratePage() {
                   {...register("targetScenario")}
                 />
 
-                {/* Objective radio group */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-stone-700">
                     发布目的
@@ -172,7 +600,7 @@ export default function GeneratePage() {
                           "flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all",
                           selectedObjective === obj.value
                             ? "border-primary bg-primary/5 text-primary-dark"
-                            : "border-stone-200 text-stone-600 hover:border-stone-300",
+                            : "border-stone-200 text-stone-600 hover:border-stone-300"
                         )}
                       >
                         <input
@@ -188,7 +616,6 @@ export default function GeneratePage() {
                   </div>
                 </div>
 
-                {/* Toggle switches */}
                 <div className="space-y-4 rounded-lg bg-stone-50 p-4">
                   <Controller
                     name="juguang"
@@ -231,9 +658,7 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          {/* Right column — Style & Content settings */}
           <div className="space-y-6">
-            {/* Style selector */}
             <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
                 风格选择
@@ -246,7 +671,7 @@ export default function GeneratePage() {
                       "flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition-all",
                       selectedStyle === style.value
                         ? "border-primary bg-primary/5"
-                        : "border-stone-200 hover:border-stone-300",
+                        : "border-stone-200 hover:border-stone-300"
                     )}
                   >
                     <input
@@ -262,7 +687,7 @@ export default function GeneratePage() {
                           "text-sm font-medium",
                           selectedStyle === style.value
                             ? "text-primary-dark"
-                            : "text-stone-700",
+                            : "text-stone-700"
                         )}
                       >
                         {style.label}
@@ -276,7 +701,6 @@ export default function GeneratePage() {
               </div>
             </div>
 
-            {/* Content tweaks */}
             <div className="rounded-xl border border-stone-200 bg-surface-raised p-6">
               <h3 className="mb-5 text-base font-semibold text-stone-900">
                 内容调整
@@ -321,12 +745,14 @@ export default function GeneratePage() {
           </div>
         </div>
 
-        {/* Submit button */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-col items-center gap-2">
+          {pollMessage && (
+            <p className="text-sm text-stone-600">{pollMessage}</p>
+          )}
           <Button
             type="submit"
             size="lg"
-            disabled={isGenerating}
+            disabled={isGenerating || !authReady}
             className="min-w-[240px] text-base shadow-lg shadow-primary/25"
           >
             {isGenerating ? (
