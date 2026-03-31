@@ -25,6 +25,14 @@ class Settings(BaseSettings):
             "Use R2 public bucket URL or a CDN origin; leave empty to use S3_ENDPOINT (OK for MinIO locally)."
         ),
     )
+    s3_public_bucket_in_path: bool = Field(
+        default=False,
+        description=(
+            "If true, public URLs are {base}/{bucket}/{object_key}. "
+            "If false (default), {base}/{object_key} — required for Cloudflare R2 r2.dev and "
+            "per-bucket custom hostnames; the bucket is not repeated in the path."
+        ),
+    )
 
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"

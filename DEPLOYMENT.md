@@ -153,6 +153,7 @@ npm run dev
 | `S3_SECRET_KEY`     | Yes      | `minioadmin`                      | S3 secret key                  |
 | `S3_BUCKET`         | Yes      | `genpos-assets`                   | S3 bucket name                 |
 | `S3_PUBLIC_BASE_URL`| No       | *(empty)*                         | Public HTTPS origin for object reads (R2 public URL / CDN). If unset, API returns `S3_ENDPOINT` URLs — fine for MinIO locally, **broken in browser for private R2 API hostnames**. |
+| `S3_PUBLIC_BUCKET_IN_PATH`| No | `false`                     | If `true`, client-facing URLs include `/{S3_BUCKET}/` after the public base. Default `false` matches **R2 `r2.dev`**, where the hostname is already bucket-scoped; double bucket in the path causes 404 in the browser. |
 | `JWT_SECRET`        | Yes      | `change-me-in-production`         | JWT signing secret             |
 | `JWT_ALGORITHM`     | No       | `HS256`                           | JWT algorithm                  |
 | `JWT_EXPIRE_MINUTES`| No       | `1440`                            | Token expiry (24h)             |
@@ -198,7 +199,7 @@ If the frontend shows this error when opening the app:
    The first load may succeed (dev-token works) but POST /chat/message can still fail if: the API crashes during generation (check Railway logs for tracebacks), `OPENAI_API_KEY` is missing or invalid, or the request times out (e.g. Railway/proxy limit). Fix the cause and retry; the app now returns a clearer error when the API responds with an error body.
 
 6. **Review thumbnails broken / grey boxes, but generation “succeeded”**  
-   The API stores images on R2/MinIO using `S3_ENDPOINT`. Browsers cannot use the Cloudflare **R2 S3 API** hostname to read objects unless the bucket is public under that host. Set **`S3_PUBLIC_BASE_URL`** to your R2 **public bucket URL** (e.g. `https://pub-xxxx.r2.dev`) or a CDN/custom domain that serves `GET` for `/{bucket}/…`. Redeploy the API. Existing rows keep the old URL in the DB; responses rewrite to the public base when the stored path contains `/{S3_BUCKET}/`.
+   The API stores images on R2/MinIO using `S3_ENDPOINT`. Browsers cannot use the Cloudflare **R2 S3 API** hostname to read objects unless the bucket is public under that host. Set **`S3_PUBLIC_BASE_URL`** to your R2 **public bucket URL** (e.g. `https://pub-xxxx.r2.dev`) or a CDN/custom domain. Redeploy the API. **Do not** set `S3_PUBLIC_BUCKET_IN_PATH=true` for default R2 `r2.dev` — that host expects object keys as `/merchant/…/file.png`, not `/genpos-assets/merchant/…`. If thumbnails still fail, open DevTools → Network on a broken image URL: **404** usually means path shape mismatch; **403** means the object or bucket is not public.
 
 7. **OpenAI usage stays at zero**  
    Confirm **`OPENAI_API_KEY`** is set on the service that runs the pipeline (direct API process **and** Temporal worker if you use `USE_TEMPORAL_*`). Ensure **`IMAGE_GENERATION_ENABLED=true`**. After a fix, Railway logs should include `Calling OpenAI images.generate …` when covers/carousels are generated.

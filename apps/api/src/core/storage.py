@@ -26,7 +26,10 @@ def client_facing_asset_url(url: str | None) -> str | None:
     if marker not in u:
         return u
     suffix = u.split(marker, 1)[1]
-    return f"{pub.rstrip('/')}/{settings.s3_bucket}/{suffix}"
+    base = pub.rstrip("/")
+    if settings.s3_public_bucket_in_path:
+        return f"{base}/{settings.s3_bucket}/{suffix}"
+    return f"{base}/{suffix}"
 
 
 class StorageService:
@@ -47,7 +50,10 @@ class StorageService:
         """URL returned after upload and in API responses (uses public base when configured)."""
         pub = settings.s3_public_base_url.strip()
         if pub:
-            return f"{pub.rstrip('/')}/{self._bucket}/{object_key}"
+            base = pub.rstrip("/")
+            if settings.s3_public_bucket_in_path:
+                return f"{base}/{self._bucket}/{object_key}"
+            return f"{base}/{object_key}"
         return f"{settings.s3_endpoint.rstrip('/')}/{self._bucket}/{object_key}"
 
     def ensure_bucket(self) -> None:
