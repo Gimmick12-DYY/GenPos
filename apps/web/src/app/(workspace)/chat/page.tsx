@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, postSse } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
@@ -48,6 +48,8 @@ export default function ChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [chatNotice, setChatNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef<string>("");
@@ -208,6 +210,32 @@ export default function ChatPage() {
     }
   }
 
+  async function handleClearChat() {
+    if (!authReady || clearing || isTyping) return;
+    if (
+      !window.confirm(
+        "确定清空当前对话？服务器上的本条会话记录也会被删除，且无法恢复。"
+      )
+    ) {
+      return;
+    }
+    const merchantId = getMerchantId();
+    const sid = sessionIdRef.current || ensureSessionId();
+    if (!merchantId) return;
+    setClearing(true);
+    setChatNotice(null);
+    try {
+      await api.delete<{ deleted: number }>(
+        `/chat/session?merchant_id=${merchantId}&session_id=${sid}`
+      );
+      setMessages([welcomeMessage]);
+    } catch (e) {
+      setChatNotice(e instanceof Error ? e.message : "清空失败");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -231,6 +259,22 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center justify-end border-b border-stone-200/80 bg-surface-raised/90 px-4 py-2 backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => void handleClearChat()}
+          disabled={clearing || !authReady || isTyping}
+          className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2 className="h-4 w-4" />
+          {clearing ? "清空中…" : "清空对话"}
+        </button>
+      </div>
+      {chatNotice && (
+        <div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">
+          {chatNotice}
+        </div>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-5 py-8">
           {messages
@@ -327,7 +371,7 @@ export default function ChatPage() {
           </button>
         </form>
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-stone-400">
-          对话会保存于此浏览器会话；生成完成后可在「待审核」查看封面与文案
+          对话会同步到服务器；可使用「清空对话」删除本条会话记录。生成完成后可在「待审核」查看封面与文案
         </p>
       </div>
     </div>

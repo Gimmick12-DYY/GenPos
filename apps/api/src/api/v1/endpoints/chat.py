@@ -14,6 +14,7 @@ from src.schemas import (
     ChatHistoryMessage,
     ChatMessageRequest,
     ChatMessageResponse,
+    ChatSessionClearResponse,
     ChatStreamRequest,
     NotePackageResponse,
 )
@@ -33,6 +34,21 @@ def _parse_uuid(value: str, field: str) -> UUID:
 def _assert_merchant(merchant_id: UUID, token: dict) -> None:
     if str(merchant_id) != str(token.get("sub")):
         raise HTTPException(status_code=403, detail="Cannot access another merchant's data")
+
+
+@router.delete("/session", response_model=ChatSessionClearResponse)
+async def clear_chat_session(
+    merchant_id: UUID,
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    token: dict = Depends(verify_token),
+):
+    """Delete all messages for this chat session (server-side history)."""
+    _assert_merchant(merchant_id, token)
+    deleted = await chat_service.delete_session_messages(
+        db, merchant_id=merchant_id, session_id=session_id
+    )
+    return ChatSessionClearResponse(deleted=deleted)
 
 
 @router.get("/messages", response_model=list[ChatHistoryMessage])

@@ -20,6 +20,12 @@ class ChatStreamRequest(BaseSchema):
     objective: str = "seeding"
 
 
+class ChatSessionClearResponse(BaseSchema):
+    """Result of clearing one chat session."""
+
+    deleted: int
+
+
 class ChatHistoryMessage(BaseSchema):
     id: UUID
     role: str

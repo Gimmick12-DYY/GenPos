@@ -22,6 +22,7 @@ from .chat import (
     ChatHistoryMessage,
     ChatMessageRequest,
     ChatMessageResponse,
+    ChatSessionClearResponse,
     ChatStreamRequest,
 )
 from .common import BaseSchema, IDResponse, PaginatedResponse, PaginationParams
@@ -143,5 +144,6 @@ __all__ = [
     "ChatHistoryMessage",
     "ChatMessageRequest",
     "ChatMessageResponse",
+    "ChatSessionClearResponse",
     "ChatStreamRequest",
 ]

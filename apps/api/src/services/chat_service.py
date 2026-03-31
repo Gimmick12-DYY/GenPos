@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import ChatMessage
@@ -48,3 +48,19 @@ async def list_messages(
     q = q.order_by(ChatMessage.created_at.desc()).limit(limit)
     rows = list((await db.execute(q)).scalars().all())
     return list(reversed(rows))
+
+
+async def delete_session_messages(
+    db: AsyncSession,
+    *,
+    merchant_id: UUID,
+    session_id: UUID,
+) -> int:
+    """Delete all messages for a chat session. Returns deleted row count."""
+    stmt = delete(ChatMessage).where(
+        ChatMessage.merchant_id == merchant_id,
+        ChatMessage.session_id == session_id,
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return int(result.rowcount or 0)
