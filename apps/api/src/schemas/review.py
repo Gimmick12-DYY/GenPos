@@ -14,6 +14,12 @@ class ReviewQueueResponse(PaginatedResponse[NotePackageResponse]):
     pass
 
 
+class HydrateMissingImagesResponse(BaseSchema):
+    """Batch backfill for note packages with image rows but empty URLs."""
+
+    processed: int
+
+
 class ApproveRequest(BaseSchema):
     reason: str | None = None
 

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.orchestrator import orchestrator
 from src.core.database import get_db
 from src.core.security import verify_token
 from src.schemas import (
@@ -79,6 +80,30 @@ async def create_note_package_endpoint(
     pkg = await note_package_service.create_note_package(db, body)
     base = NotePackageDetailResponse.model_validate(pkg, from_attributes=True)
     return note_package_service.detail_with_client_image_urls(pkg, base)
+
+
+@router.post("/{package_id}/hydrate-images", response_model=NotePackageResponse)
+async def hydrate_note_package_images(
+    package_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    token: dict = Depends(verify_token),
+):
+    """Upload cover/carousel PNGs when image_url rows are still empty (recovery)."""
+    merchant_id = UUID(str(token["sub"]))
+    pkg = await note_package_service.get_note_package_detail(db, package_id)
+    if pkg is None or pkg.merchant_id != merchant_id:
+        raise HTTPException(status_code=404, detail="Note package not found")
+    if not pkg.image_assets:
+        raise HTTPException(
+            status_code=400,
+            detail="No image assets to hydrate; generate a package first",
+        )
+    await orchestrator.hydrate_stale_package_images(db, pkg)
+    await db.commit()
+    refreshed = await note_package_service.get_note_package_detail(db, package_id)
+    if refreshed is None:
+        raise HTTPException(status_code=500, detail="Failed to reload note package")
+    return note_package_service.note_package_to_response(refreshed)
 
 
 @router.patch("/{package_id}", response_model=NotePackageResponse)

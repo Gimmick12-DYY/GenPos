@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ClipboardCheck, Filter, LayoutGrid, List, Search, X } from "lucide-react";
+import {
+  ClipboardCheck,
+  Filter,
+  ImagePlus,
+  LayoutGrid,
+  List,
+  Search,
+  X,
+} from "lucide-react";
 import { NotePackageCard } from "@/components/note-package-card";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -78,6 +86,7 @@ export default function ReviewPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [editTitleId, setEditTitleId] = useState<string | null>(null);
   const [editTitleText, setEditTitleText] = useState("");
+  const [hydratingImages, setHydratingImages] = useState(false);
 
   useEffect(() => {
     ensureAuth()
@@ -232,6 +241,28 @@ export default function ReviewPage() {
     }
   }
 
+  async function hydrateMissingCovers() {
+    const merchantId = getMerchantId();
+    if (!merchantId) return;
+    setHydratingImages(true);
+    setListError(null);
+    try {
+      const r = await api.post<{ processed: number }>(
+        `/review/hydrate-missing-images?merchant_id=${merchantId}&limit=15`,
+      );
+      await refreshAll();
+      if (r.processed === 0) {
+        setListError(
+          "没有需要补图的待审笔记（或这些笔记缺少图片位 / 配图已存在）。请确认已部署最新 API。",
+        );
+      }
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "补全配图失败");
+    } finally {
+      setHydratingImages(false);
+    }
+  }
+
   useEffect(() => {
     if (!detailId || !authReady) {
       setDetail(null);
@@ -359,7 +390,19 @@ export default function ReviewPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTab === "pending" && (
+              <button
+                type="button"
+                disabled={hydratingImages}
+                onClick={() => void hydrateMissingCovers()}
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/90 px-3 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                title="为待审笔记中「有图片位但 URL 为空」的方案重新生成并上传封面与轮播图"
+              >
+                <ImagePlus className="h-3.5 w-3.5 shrink-0" />
+                {hydratingImages ? "补图中…" : "补全配图"}
+              </button>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
               <input
@@ -387,15 +430,26 @@ export default function ReviewPage() {
           <p className="text-sm text-stone-500">
             排期 {counts.queued} · 已发布 {counts.live}
           </p>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索看板…"
-              className="h-9 w-60 rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={hydratingImages}
+              onClick={() => void hydrateMissingCovers()}
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/90 px-3 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            >
+              <ImagePlus className="h-3.5 w-3.5 shrink-0" />
+              {hydratingImages ? "补图中…" : "补全配图"}
+            </button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索看板…"
+                className="h-9 w-60 rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm placeholder:text-stone-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
         </div>
       )}

@@ -1,52 +1,3 @@
-from .common import BaseSchema, IDResponse, PaginatedResponse, PaginationParams
-from .merchant import (
-    MerchantCreate,
-    MerchantResponse,
-    MerchantRulesResponse,
-    MerchantRulesUpdate,
-    MerchantUpdate,
-)
-from .product import ProductCreate, ProductListResponse, ProductResponse, ProductUpdate
-from .asset import AssetListResponse, AssetPackCreate, AssetPackResponse, AssetResponse
-from .generation import (
-    DailyBatchAsyncStartResponse,
-    DailyRunRequest,
-    GenerationAsyncStartResponse,
-    GenerationJobResponse,
-    GenerationJobResultResponse,
-    GenerationRequest,
-    GenerationTaskResponse,
-    TaskListResponse,
-)
-from .note_package import (
-    BriefResponse,
-    ImageAssetCreate,
-    ImageAssetResponse,
-    NotePackageCreate,
-    NotePackageDetailResponse,
-    NotePackageListResponse,
-    NotePackagePatch,
-    NotePackageResponse,
-    TextAssetCreate,
-    TextAssetResponse,
-    TextAssetPatch,
-)
-from .review import (
-    ApproveRequest,
-    RejectRequest,
-    ReviewEventResponse,
-    ReviewQueueResponse,
-)
-from .export import ExportResponse
-from .analytics import (
-    FatigueDimensionResponse,
-    MetricsIngestRequest,
-    MetricsUploadResponse,
-    PerformanceResponse,
-    ProductFatigueResponse,
-    ProductPerformanceResponse,
-)
-from .persona import PersonaCreate, PersonaListResponse, PersonaResponse, PersonaUpdate
 from .agent_team import (
     AgentRoleResponse,
     AgentTeamCreate,
@@ -58,11 +9,61 @@ from .agent_team import (
     ExperimentCreate,
     ExperimentResponse,
 )
+from .analytics import (
+    FatigueDimensionResponse,
+    MetricsIngestRequest,
+    MetricsUploadResponse,
+    PerformanceResponse,
+    ProductFatigueResponse,
+    ProductPerformanceResponse,
+)
+from .asset import AssetListResponse, AssetPackCreate, AssetPackResponse, AssetResponse
 from .chat import (
     ChatHistoryMessage,
     ChatMessageRequest,
     ChatMessageResponse,
     ChatStreamRequest,
+)
+from .common import BaseSchema, IDResponse, PaginatedResponse, PaginationParams
+from .export import ExportResponse
+from .generation import (
+    DailyBatchAsyncStartResponse,
+    DailyRunRequest,
+    GenerationAsyncStartResponse,
+    GenerationJobResponse,
+    GenerationJobResultResponse,
+    GenerationRequest,
+    GenerationTaskResponse,
+    TaskListResponse,
+)
+from .merchant import (
+    MerchantCreate,
+    MerchantResponse,
+    MerchantRulesResponse,
+    MerchantRulesUpdate,
+    MerchantUpdate,
+)
+from .note_package import (
+    BriefResponse,
+    ImageAssetCreate,
+    ImageAssetResponse,
+    NotePackageCreate,
+    NotePackageDetailResponse,
+    NotePackageListResponse,
+    NotePackagePatch,
+    NotePackageResponse,
+    TextAssetCreate,
+    TextAssetPatch,
+    TextAssetResponse,
+)
+from .persona import PersonaCreate, PersonaListResponse, PersonaResponse, PersonaUpdate
+from .product import ProductCreate, ProductListResponse, ProductResponse, ProductUpdate
+from .review import (
+    ApproveRequest,
+    HydrateMissingImagesResponse,
+    RejectRequest,
+    ReviewEventResponse,
+    ReviewQueueResponse,
 )
 
 __all__ = [
@@ -110,6 +111,7 @@ __all__ = [
     "NotePackageDetailResponse",
     # review
     "ReviewQueueResponse",
+    "HydrateMissingImagesResponse",
     "ApproveRequest",
     "RejectRequest",
     "ReviewEventResponse",

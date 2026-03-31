@@ -4,10 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.orchestrator import orchestrator
 from src.core.database import get_db
 from src.core.security import verify_token
 from src.schemas import (
     ApproveRequest,
+    HydrateMissingImagesResponse,
     NotePackageResponse,
     RejectRequest,
     ReviewQueueResponse,
@@ -55,6 +57,36 @@ async def get_review_queue_today(
     )
     out = [note_package_service.note_package_to_response(p) for p in items]
     return ReviewQueueResponse(items=out, total=total, limit=limit, offset=offset)
+
+
+@router.post("/hydrate-missing-images", response_model=HydrateMissingImagesResponse)
+async def hydrate_missing_review_images(
+    merchant_id: UUID = Query(...),
+    limit: int = Query(10, ge=1, le=30),
+    db: AsyncSession = Depends(get_db),
+    token: dict = Depends(verify_token),
+):
+    """Backfill PNGs for pending packages that have image rows but empty image_url."""
+    if str(merchant_id) != str(token.get("sub")):
+        raise HTTPException(status_code=403, detail="Cannot access another merchant's data")
+    items, _ = await review_service.get_review_queue(
+        db, merchant_id=merchant_id, limit=200, offset=0
+    )
+    processed = 0
+    for p in items:
+        if note_package_service.pick_cover_url(p) is not None:
+            continue
+        if not p.image_assets:
+            continue
+        detail = await note_package_service.get_note_package_detail(db, p.id)
+        if detail is None:
+            continue
+        await orchestrator.hydrate_stale_package_images(db, detail)
+        processed += 1
+        if processed >= limit:
+            break
+    await db.commit()
+    return HydrateMissingImagesResponse(processed=processed)
 
 
 @router.post("/{package_id}/approve", response_model=NotePackageResponse)

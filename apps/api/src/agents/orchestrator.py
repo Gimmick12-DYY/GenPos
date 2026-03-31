@@ -618,6 +618,31 @@ class GenerationOrchestrator:
             )
             ia.image_url = url
 
+    async def hydrate_stale_package_images(
+        self,
+        db: AsyncSession,
+        package: NotePackage,
+    ) -> None:
+        """Upload PNGs for ImageAssets that still have empty image_url (recovery after failed runs)."""
+        title_row = next(
+            (ta for ta in (package.text_assets or []) if ta.asset_role == "title"),
+            None,
+        )
+        headline = (title_row.content if title_row else "")[:80] or "笔记封面"
+        note = {"title_variants": [{"title": headline}]}
+        strategy = {"style_family": package.style_family or ""}
+        visual = {"style_family": package.style_family or ""}
+        product_name = package.product.name if package.product is not None else None
+        await self._hydrate_image_assets(
+            db,
+            package,
+            package.merchant_id,
+            note,
+            visual,
+            strategy,
+            product_name=product_name,
+        )
+
     # ------------------------------------------------------------------
     # Error handling
     # ------------------------------------------------------------------
