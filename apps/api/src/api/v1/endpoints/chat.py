@@ -17,7 +17,7 @@ from src.schemas import (
     ChatStreamRequest,
     NotePackageResponse,
 )
-from src.services import chat_service, generation_service
+from src.services import chat_service, generation_service, product_catalog_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -127,6 +127,7 @@ async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIter
 
     meta_out: dict = {}
 
+    catalog_block = ""
     async with async_session_factory() as db:
         await chat_service.append_message(
             db,
@@ -135,12 +136,18 @@ async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIter
             role="user",
             content=body.message,
         )
+        catalog = await product_catalog_service.load_active_product_catalog(
+            db, merchant_uuid
+        )
+        catalog_block = product_catalog_service.format_catalog_text_for_prompt(catalog)
 
     yield f"data: {json.dumps({'type': 'start'}, ensure_ascii=False)}\n\n"
 
     system_preamble = (
-        "你是小红书商家的创作顾问。根据用户一句话需求，先用一两句话友好确认理解，"
-        "并说明接下来会为其生成笔记草案（语气轻松专业，纯中文）。"
+        "你是小红书商家的创作顾问，熟悉该商户「我的产品库」里已录入的商品。"
+        "你必须根据下方「产品库」中的真实商品来理解用户提到的简称或代号，不要要求用户重复填写库里已有信息。"
+        "先用一两句话友好确认理解，并说明接下来会为其整理笔记思路或生成草案（语气轻松专业，纯中文）。\n\n"
+        f"{catalog_block}"
     )
     try:
         async for chunk in llm_client.chat_completion_stream(
@@ -161,6 +168,7 @@ async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIter
                 product_id=product_id,
                 user_message=body.message,
                 objective=body.objective,
+                session_id=session_uuid,
             )
     except Exception as e:
         logger.exception("Chat stream pipeline failed")

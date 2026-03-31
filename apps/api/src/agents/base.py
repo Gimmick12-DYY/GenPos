@@ -26,6 +26,8 @@ class AgentContext:
     product_name: str = ""
     product_category: str = ""
     product_description: str = ""
+    # All active products for this merchant (for Copilot / chat grounding)
+    product_catalog: list[dict] = field(default_factory=list)
 
     # Asset data
     asset_urls: list[str] = field(default_factory=list)

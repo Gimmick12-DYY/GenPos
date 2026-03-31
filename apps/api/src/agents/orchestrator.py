@@ -30,9 +30,11 @@ from src.models import (
 )
 from src.services import (
     analytics_service,
+    chat_service,
     fatigue_service,
     image_generation_service,
     image_render_service,
+    product_catalog_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +70,7 @@ class GenerationOrchestrator:
         is_juguang: bool = False,
         is_pugongying: bool = False,
         job_id: UUID | None = None,
+        session_id: UUID | None = None,
     ) -> dict:
         """Run the full on-demand generation pipeline.
 
@@ -82,6 +85,7 @@ class GenerationOrchestrator:
             persona,
             style_preference,
             special_instructions,
+            session_id,
         )
 
         if job_id is not None:
@@ -244,12 +248,15 @@ class GenerationOrchestrator:
         Returns same shape as run_on_demand (generation_job_id, note_package_id, etc.).
         """
         ctx = await self._build_context(
-            db, merchant_id, product_id,
+            db,
+            merchant_id,
+            product_id,
             user_message="",
             objective=objective,
             persona="",
             style_preference="",
             special_instructions="",
+            session_id=None,
         )
         # Build structured_job from product for planner
         product = await db.get(Product, product_id)
@@ -353,10 +360,26 @@ class GenerationOrchestrator:
         persona: str,
         style_preference: str,
         special_instructions: str,
+        session_id: UUID | None = None,
     ) -> AgentContext:
         """Load merchant/product data and build the initial agent context."""
         ctx = AgentContext(merchant_id=merchant_id, product_id=product_id)
         ctx.user_message = user_message
+
+        ctx.product_catalog = await product_catalog_service.load_active_product_catalog(
+            db, merchant_id
+        )
+
+        if session_id is not None:
+            msgs = await chat_service.list_messages(
+                db,
+                merchant_id=merchant_id,
+                session_id=session_id,
+                limit=32,
+            )
+            ctx.conversation_history = [
+                {"role": m.role, "content": m.content} for m in msgs
+            ]
 
         merchant = await db.get(Merchant, merchant_id)
         if merchant:

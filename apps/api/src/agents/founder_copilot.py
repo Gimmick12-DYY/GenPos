@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+from src.core.product_catalog_prompt import format_catalog_text_for_prompt
 
 from .base import AgentContext, AgentResult, BaseAgent
 
@@ -15,7 +15,7 @@ _SYSTEM_PROMPT = """\
    - `export`：导出笔记或数据
 
 2. **需求解构**：将模糊的商家需求转化为结构化的生成任务，包含：
-   - `product_id`：关联的产品ID（如可识别）
+   - `product_id`：关联的产品ID（**必须**来自用户消息中「本商户产品库」列表里的 UUID；用户用简称、代号、昵称指代商品时，根据名称/分类/描述匹配到唯一一条并填入该 ID）
    - `objective`：营销目标（seeding/conversion/awareness/engagement）
    - `persona`：目标受众描述
    - `style_preference`：风格偏好
@@ -49,6 +49,8 @@ _SYSTEM_PROMPT = """\
 ## 规则
 - 始终用中文回复商家
 - 保持友好、专业、高效的对话风格
+- **产品库优先**：用户消息中会附带「本商户产品库」。若用户提到某商品，请只依据该列表中的真实名称与描述作答；不要虚构库里未出现的 SKU。
+- 当意图为 `generate_note` 且产品库非空时，`structured_job.product_id` 必须设为库中某条商品的 UUID；若简称可唯一匹配（如「M1」对应名称「M1」），直接匹配，不要反问「请提供产品信息」。
 - 当意图不是 generate_note 时，structured_job 可以为空对象
 - 当 needs_clarification 为 true 时，response_to_user 应包含具体的追问问题
 - 即使信息不完整，也尽量推断合理的默认值
@@ -60,6 +62,16 @@ class FounderCopilotAgent(BaseAgent):
 
     role_key = "founder_copilot"
     display_name = "创始人副驾"
+
+    def _build_system_prompt(self, ctx: AgentContext) -> str:
+        base = super()._build_system_prompt(ctx)
+        if ctx.product_catalog:
+            return (
+                base
+                + "\n\n## 产品库约束\n"
+                "你已收到「本商户产品库」全文（见用户消息）。生成笔记时必须使用其中的 product_id。"
+            )
+        return base
 
     async def execute(self, ctx: AgentContext) -> AgentResult:
         system_prompt = self._build_system_prompt(ctx)
@@ -121,6 +133,9 @@ class FounderCopilotAgent(BaseAgent):
         if ctx.merchant_rules:
             rules_summary = self._summarise_rules(ctx.merchant_rules)
             parts.append(f"- 商家规则：{rules_summary}")
+
+        parts.append("\n## 本商户产品库")
+        parts.append(format_catalog_text_for_prompt(ctx.product_catalog))
 
         if ctx.product_name:
             parts.append("\n## 当前产品")
