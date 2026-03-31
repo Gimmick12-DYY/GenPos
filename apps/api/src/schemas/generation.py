@@ -23,7 +23,7 @@ class GenerationRequest(BaseSchema):
 
 class DailyRunRequest(BaseSchema):
     merchant_id: UUID
-    packages_per_product: int = Field(default=1, ge=1, le=10)
+    packages_per_product: int = Field(default=3, ge=1, le=10)
 
 
 class DailyBatchAsyncStartResponse(BaseSchema):

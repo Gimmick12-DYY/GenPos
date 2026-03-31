@@ -16,6 +16,9 @@ interface NotePackageCardProps {
   comments?: number;
   onApprove?: () => void;
   onReject?: () => void;
+  /** Phase 2 / BL-208: trigger on-demand generation for the same product */
+  onGenerateMore?: () => void;
+  generateMorePending?: boolean;
   className?: string;
 }
 
@@ -29,6 +32,8 @@ export function NotePackageCard({
   comments = 0,
   onApprove,
   onReject,
+  onGenerateMore,
+  generateMorePending = false,
   className,
 }: NotePackageCardProps) {
   const [coverFailed, setCoverFailed] = useState(false);
@@ -95,22 +100,38 @@ export function NotePackageCard({
         </div>
 
         {/* Action buttons for review */}
-        {(onApprove || onReject) && (
-          <div className="mt-3 flex gap-2 border-t border-stone-100 pt-3">
-            {onApprove && (
-              <button
-                onClick={onApprove}
-                className="flex-1 rounded-md bg-emerald-50 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
-              >
-                通过
-              </button>
+        {(onApprove || onReject || onGenerateMore) && (
+          <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
+            {(onApprove || onReject) && (
+              <div className="flex gap-2">
+                {onApprove && (
+                  <button
+                    type="button"
+                    onClick={onApprove}
+                    className="flex-1 rounded-md bg-emerald-50 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    通过
+                  </button>
+                )}
+                {onReject && (
+                  <button
+                    type="button"
+                    onClick={onReject}
+                    className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    拒绝
+                  </button>
+                )}
+              </div>
             )}
-            {onReject && (
+            {onGenerateMore && (
               <button
-                onClick={onReject}
-                className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+                type="button"
+                onClick={onGenerateMore}
+                disabled={generateMorePending}
+                className="w-full rounded-md border border-primary/25 bg-primary/5 py-1.5 text-xs font-medium text-primary-dark transition-colors hover:bg-primary/10 disabled:opacity-50"
               >
-                拒绝
+                {generateMorePending ? "生成中…" : "为此产品再生成一条"}
               </button>
             )}
           </div>

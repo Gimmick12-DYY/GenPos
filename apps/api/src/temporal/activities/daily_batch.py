@@ -12,7 +12,7 @@ from src.services.generation_service import run_daily_batch
 async def run_daily_batch_activity(payload: dict) -> dict:
     """Run daily_auto generation for all active products of one merchant (BL-201)."""
     merchant_id = UUID(payload["merchant_id"])
-    packages = int(payload.get("packages_per_product") or 1)
+    packages = int(payload.get("packages_per_product") or 3)
     async with async_session_factory() as db:
         return await run_daily_batch(
             db,

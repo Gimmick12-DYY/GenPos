@@ -9,6 +9,8 @@ import { ensureAuth, getMerchantId } from "@/lib/auth";
 
 interface NotePackageItem {
   id: string;
+  product_id: string;
+  objective: string;
   ranking_score?: number | null;
   style_family?: string | null;
   compliance_status: string;
@@ -58,6 +60,10 @@ export default function DashboardPage() {
   const [authReady, setAuthReady] = useState(false);
   const [pickDate, setPickDate] = useState(todayIsoDate);
   const [runningBatch, setRunningBatch] = useState(false);
+  const [generatingProductId, setGeneratingProductId] = useState<string | null>(
+    null
+  );
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   useEffect(() => {
     ensureAuth()
@@ -132,16 +138,61 @@ export default function DashboardPage() {
     if (!merchantId) return;
     setRunningBatch(true);
     setError(null);
+    setInfoMessage(null);
     try {
       await api.post("/generate/daily/run", {
         merchant_id: merchantId,
-        packages_per_product: 1,
       });
       await loadQueue();
     } catch (e) {
       setError(e instanceof Error ? e.message : "批次触发失败");
     } finally {
       setRunningBatch(false);
+    }
+  }
+
+  async function handleGenerateMore(pkg: NotePackageItem) {
+    const merchantId = getMerchantId();
+    if (!merchantId) return;
+    setGeneratingProductId(pkg.product_id);
+    setError(null);
+    setInfoMessage(null);
+    try {
+      const res = await api.post<Record<string, unknown>>("/generate/request", {
+        merchant_id: merchantId,
+        product_id: pkg.product_id,
+        objective: pkg.objective || "种草",
+        persona: undefined,
+        style_preference: pkg.style_family ?? undefined,
+      });
+      if (
+        res &&
+        typeof res === "object" &&
+        "mode" in res &&
+        res.mode === "async"
+      ) {
+        setInfoMessage(
+          "已提交一键生成任务（异步）。请稍后在「待审核」查看新笔记；今日推荐仅展示每日自动批次。"
+        );
+        return;
+      }
+      const sync = res as {
+        note_package_id?: string;
+        error?: string;
+      };
+      if (sync.error) {
+        setError(sync.error);
+        return;
+      }
+      if (sync.note_package_id) {
+        setInfoMessage(
+          "已生成新笔记包。请在「待审核」查看（一键生成不会自动进入今日推荐队列）。"
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "触发生成失败");
+    } finally {
+      setGeneratingProductId(null);
     }
   }
 
@@ -206,6 +257,11 @@ export default function DashboardPage() {
       {error && queue && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
           {error}
+        </div>
+      )}
+      {infoMessage && (
+        <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary-dark">
+          {infoMessage}
         </div>
       )}
 
@@ -287,6 +343,8 @@ export default function DashboardPage() {
               comments={0}
               onApprove={() => handleApprove(pkg.id)}
               onReject={() => handleReject(pkg.id)}
+              onGenerateMore={() => void handleGenerateMore(pkg)}
+              generateMorePending={generatingProductId === pkg.product_id}
             />
           ))}
         </div>

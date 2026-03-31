@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.orchestrator import orchestrator
 from src.models import Product
-from src.services import review_service
+from src.services import ranking_service, review_service
 
 
 async def run_on_demand_generation(
@@ -81,7 +81,15 @@ async def run_daily_batch(
                 failures += 1
                 details.append({"product_id": str(product.id), "error": out.get("error", "failed")})
 
-    # Apply auto-approve for merchants with review_mode=auto
+    new_package_ids: list[UUID] = []
+    for row in details:
+        nid = row.get("note_package_id")
+        if nid:
+            new_package_ids.append(UUID(str(nid)))
+    if new_package_ids:
+        await ranking_service.update_ranking_scores(db, new_package_ids)
+
+    # Apply auto-approve for merchants with review_mode=auto (uses composite ranking_score)
     auto_approved = await review_service.process_auto_approve(db, merchant_id)
 
     return {
