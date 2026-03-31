@@ -50,6 +50,31 @@ class Settings(BaseSettings):
     llm_secondary_base_url: str = ""
     llm_secondary_model: str = "gpt-4o-mini"
 
+    image_generation_enabled: bool = Field(
+        default=True,
+        description="If false, only local placeholder images are used (no OpenAI Images API).",
+    )
+    image_gen_model: str = Field(
+        default="dall-e-3",
+        description="OpenAI Images model (e.g. dall-e-3, dall-e-2, gpt-image-1).",
+    )
+    image_gen_size_cover: str = Field(
+        default="1024x1792",
+        description="Portrait-friendly cover size (DALL-E 3: 1024x1792 | 1792x1024 | 1024x1024).",
+    )
+    image_gen_size_carousel: str = Field(
+        default="1024x1024",
+        description="Square carousel slide size for DALL-E 3.",
+    )
+    image_gen_quality: str = Field(
+        default="standard",
+        description="DALL-E 3 quality: standard | hd",
+    )
+    image_gen_style: str = Field(
+        default="vivid",
+        description="DALL-E 3 style: vivid | natural",
+    )
+
     cors_origins: Union[str, list[str]] = ["http://localhost:3000"]
 
     @field_validator("cors_origins", mode="before")
