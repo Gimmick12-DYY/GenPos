@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models import MerchantRules, NotePackage, ReviewEvent
 
@@ -34,6 +35,10 @@ async def get_review_queue(
 
     items_stmt = (
         items_stmt.order_by(NotePackage.ranking_score.desc().nulls_last())
+        .options(
+            selectinload(NotePackage.product),
+            selectinload(NotePackage.image_assets),
+        )
         .limit(limit)
         .offset(offset)
     )
@@ -61,6 +66,10 @@ async def get_review_queue_today(
     total = (await db.execute(count_stmt)).scalar_one()
     items_stmt = (
         items_stmt.order_by(NotePackage.ranking_score.desc().nulls_last())
+        .options(
+            selectinload(NotePackage.product),
+            selectinload(NotePackage.image_assets),
+        )
         .limit(limit)
         .offset(offset)
     )

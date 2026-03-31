@@ -8,6 +8,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models import NotePackage, ReviewEvent
+from src.schemas.note_package import NotePackageResponse
+
+_COVER_ROLE_ORDER = (
+    "cover",
+    "carousel_1",
+    "carousel_2",
+    "carousel_3",
+    "carousel_4",
+    "carousel_5",
+)
+
+
+def pick_cover_url(pkg: NotePackage) -> str | None:
+    """First non-empty image URL: prefer cover, then carousel slots, then any."""
+    assets = pkg.image_assets or []
+    for role in _COVER_ROLE_ORDER:
+        for a in assets:
+            if a.asset_role == role and (a.image_url or "").strip():
+                return a.image_url.strip()
+    for a in assets:
+        if (a.image_url or "").strip():
+            return a.image_url.strip()
+    return None
+
+
+def note_package_to_response(pkg: NotePackage) -> NotePackageResponse:
+    """Build API row; expects product and/or image_assets loaded when available."""
+    row = NotePackageResponse.model_validate(pkg, from_attributes=True)
+    pname = pkg.product.name if pkg.product is not None else None
+    cover = pick_cover_url(pkg)
+    return row.model_copy(update={"product_name": pname, "cover_url": cover})
 
 
 async def get_note_package(
@@ -23,6 +54,7 @@ async def get_note_package_detail(
         select(NotePackage)
         .where(NotePackage.id == package_id)
         .options(
+            selectinload(NotePackage.product),
             selectinload(NotePackage.text_assets),
             selectinload(NotePackage.image_assets),
             selectinload(NotePackage.briefs),
@@ -53,7 +85,10 @@ async def list_note_packages(
     base = (
         select(NotePackage)
         .where(*conditions)
-        .options(selectinload(NotePackage.product))
+        .options(
+            selectinload(NotePackage.product),
+            selectinload(NotePackage.image_assets),
+        )
     )
     if sort == "ranking":
         order = NotePackage.ranking_score.desc().nulls_last()

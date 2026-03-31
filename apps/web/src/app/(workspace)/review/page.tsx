@@ -15,6 +15,7 @@ interface QueueItem {
   ranking_score?: number | null;
   compliance_status: string;
   review_status: string;
+  cover_url?: string | null;
 }
 
 interface PagedQueue {
@@ -265,6 +266,7 @@ export default function ReviewPage() {
               <NotePackageCard
                 key={item.id}
                 title={cardTitle(item)}
+                coverUrl={item.cover_url ?? undefined}
                 score={
                   item.ranking_score != null
                     ? Math.round(item.ranking_score)
@@ -298,6 +300,7 @@ export default function ReviewPage() {
             <NotePackageCard
               key={item.id}
               title={cardTitle(item)}
+              coverUrl={item.cover_url ?? undefined}
               score={
                 item.ranking_score != null
                   ? Math.round(item.ranking_score)

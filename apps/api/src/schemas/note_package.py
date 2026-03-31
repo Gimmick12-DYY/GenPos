@@ -27,6 +27,7 @@ class NotePackageResponse(BaseSchema):
     created_at: datetime
     updated_at: datetime
     product_name: str | None = None
+    cover_url: str | None = None
 
 
 class NotePackageListResponse(PaginatedResponse[NotePackageResponse]):

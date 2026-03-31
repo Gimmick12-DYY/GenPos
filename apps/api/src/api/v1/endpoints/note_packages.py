@@ -9,7 +9,6 @@ from src.schemas import (
     ImageAssetResponse,
     NotePackageDetailResponse,
     NotePackageListResponse,
-    NotePackageResponse,
     TextAssetResponse,
 )
 from src.services import note_package_service
@@ -51,11 +50,7 @@ async def list_note_packages_endpoint(
         source_mode=source_mode,
         sort=sort_key,
     )
-    out: list[NotePackageResponse] = []
-    for p in items:
-        row = NotePackageResponse.model_validate(p, from_attributes=True)
-        pname = p.product.name if p.product is not None else None
-        out.append(row.model_copy(update={"product_name": pname}))
+    out = [note_package_service.note_package_to_response(p) for p in items]
     return NotePackageListResponse(items=out, total=total, limit=limit, offset=offset)
 
 
@@ -69,7 +64,11 @@ async def get_note_package(
     pkg = await note_package_service.get_note_package_detail(db, package_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="Note package not found")
-    return pkg
+    base = NotePackageDetailResponse.model_validate(pkg, from_attributes=True)
+    row = note_package_service.note_package_to_response(pkg)
+    return base.model_copy(
+        update={"product_name": row.product_name, "cover_url": row.cover_url}
+    )
 
 
 @router.get("/{package_id}/text-assets", response_model=list[TextAssetResponse])
