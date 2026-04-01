@@ -51,6 +51,14 @@ class Settings(BaseSettings):
         default=False,
         description="Run POST /generate/daily/run as a Temporal workflow (BL-201).",
     )
+    daily_batch_cron_secret: str = Field(
+        default="",
+        description=(
+            "If set, POST /generate/daily/run-all accepts this value via "
+            "header X-GenPos-Cron-Secret (cron / GitHub Actions). "
+            "If empty, run-all requires a normal JWT."
+        ),
+    )
 
     max_concurrent_generation_jobs: int = Field(
         default=10,

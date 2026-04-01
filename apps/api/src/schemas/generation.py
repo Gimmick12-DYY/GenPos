@@ -24,6 +24,14 @@ class GenerationRequest(BaseSchema):
 class DailyRunRequest(BaseSchema):
     merchant_id: UUID
     packages_per_product: int = Field(default=3, ge=1, le=10)
+    force: bool = Field(
+        default=False,
+        description="Bypass idempotency (new Temporal workflow id or sync re-run).",
+    )
+    skip_if_already_run: bool = Field(
+        default=True,
+        description="Sync path: skip when today's daily_auto count already matches quota.",
+    )
 
 
 class DailyBatchAsyncStartResponse(BaseSchema):
@@ -32,6 +40,29 @@ class DailyBatchAsyncStartResponse(BaseSchema):
     workflow_id: str
     run_id: str
     mode: Literal["async"] = "async"
+    shanghai_date: str = ""
+
+
+class DailyRunAllRequest(BaseSchema):
+    """Run daily batch for every merchant that has at least one product row."""
+
+    packages_per_product: int = Field(default=3, ge=1, le=10)
+    force: bool = False
+    skip_if_already_run: bool = True
+
+
+class DailyRunMerchantResult(BaseSchema):
+    merchant_id: UUID
+    status: Literal["started", "skipped", "error", "completed"]
+    workflow_id: str | None = None
+    detail: str | None = None
+    packages_created: int | None = None
+
+
+class DailyRunAllResponse(BaseSchema):
+    shanghai_date: str
+    temporal: bool
+    merchants: list[DailyRunMerchantResult]
 
 
 class GenerationJobResponse(BaseSchema):

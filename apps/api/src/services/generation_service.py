@@ -2,12 +2,38 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.orchestrator import orchestrator
-from src.models import Product
+from src.core.shanghai_calendar import shanghai_date_iso
+from src.models import NotePackage, Product
 from src.services import ranking_service, review_service
+
+
+async def _count_daily_auto_packages_today(
+    db: AsyncSession,
+    merchant_id: UUID,
+) -> int:
+    start_utc, end_utc = review_service.shanghai_day_utc_bounds(None)
+    stmt = (
+        select(func.count())
+        .select_from(NotePackage)
+        .where(
+            NotePackage.merchant_id == merchant_id,
+            NotePackage.source_mode == "daily_auto",
+            NotePackage.created_at >= start_utc,
+            NotePackage.created_at < end_utc,
+        )
+    )
+    return int((await db.execute(stmt)).scalar_one())
+
+
+async def list_all_merchant_ids(db: AsyncSession) -> list[UUID]:
+    """Merchants that have at least one active product (daily batch target set)."""
+    stmt = select(Product.merchant_id).where(Product.status == "active").distinct()
+    rows = (await db.execute(stmt)).all()
+    return [r[0] for r in rows]
 
 
 async def run_on_demand_generation(
@@ -46,10 +72,15 @@ async def run_daily_batch(
     merchant_id: UUID,
     packages_per_product: int = 1,
     max_concurrent: int = 3,
+    *,
+    force: bool = False,
+    skip_if_already_run: bool = True,
 ) -> dict:
     """
     Run daily generation for all active products of a merchant.
     Uses semaphore to limit concurrent product pipelines.
+    When skip_if_already_run and not force, skips if today's daily_auto count
+    already reaches len(products) * packages_per_product (Shanghai calendar day).
     """
     stmt = select(Product).where(
         Product.merchant_id == merchant_id,
@@ -60,11 +91,30 @@ async def run_daily_batch(
     if not products:
         return {
             "merchant_id": str(merchant_id),
+            "shanghai_date": shanghai_date_iso(),
             "products_processed": 0,
             "packages_created": 0,
             "failures": 0,
+            "skipped": False,
             "details": [],
         }
+
+    needed = len(products) * packages_per_product
+    if skip_if_already_run and not force:
+        existing = await _count_daily_auto_packages_today(db, merchant_id)
+        if existing >= needed:
+            return {
+                "merchant_id": str(merchant_id),
+                "shanghai_date": shanghai_date_iso(),
+                "skipped": True,
+                "reason": "already_run_today",
+                "existing_packages_today": existing,
+                "expected_packages": needed,
+                "products_processed": 0,
+                "packages_created": 0,
+                "failures": 0,
+                "details": [],
+            }
 
     details: list[dict] = []
     packages_created = 0
@@ -96,6 +146,8 @@ async def run_daily_batch(
 
     return {
         "merchant_id": str(merchant_id),
+        "shanghai_date": shanghai_date_iso(),
+        "skipped": False,
         "products_processed": len(products),
         "packages_created": packages_created,
         "failures": failures,
