@@ -28,6 +28,9 @@ class NotePackageResponse(BaseSchema):
     updated_at: datetime
     product_name: str | None = None
     cover_url: str | None = None
+    # BL-208: optional fatigue hints when listing review / today queues (BL-203)
+    fatigue_warning: bool | None = None
+    fatigue_hints: list[str] | None = None
 
 
 class NotePackageListResponse(PaginatedResponse[NotePackageResponse]):

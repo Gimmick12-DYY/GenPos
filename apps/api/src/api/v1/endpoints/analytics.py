@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.core.security import verify_token
 from src.schemas import (
+    MetricsBatchIngestRequest,
+    MetricsBatchIngestResponse,
     MetricsIngestRequest,
     MetricsUploadResponse,
     PerformanceResponse,
@@ -43,6 +45,20 @@ async def ingest_metrics(
 ):
     """Ingest XiaoHongShu performance metrics (upsert by note_package_id + date)."""
     return await analytics_service.ingest_metrics(db, body)
+
+
+@router.post(
+    "/ingest-batch",
+    response_model=MetricsBatchIngestResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def ingest_metrics_batch(
+    body: MetricsBatchIngestRequest,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_token),
+):
+    """BL-202: batch upsert (single transaction)."""
+    return await analytics_service.ingest_metrics_batch(db, body.items)
 
 
 @router.get(

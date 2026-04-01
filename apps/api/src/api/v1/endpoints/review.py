@@ -14,9 +14,27 @@ from src.schemas import (
     RejectRequest,
     ReviewQueueResponse,
 )
-from src.services import note_package_service, review_service
+from src.services import fatigue_service, note_package_service, review_service
 
 router = APIRouter()
+
+
+async def _note_packages_with_fatigue(db, items: list):
+    """Attach fatigue_warning / fatigue_hints to list responses (BL-208 + BL-203)."""
+    flags = await fatigue_service.fatigue_flags_for_packages(db, items)
+    out = []
+    for p in items:
+        resp = note_package_service.note_package_to_response(p)
+        f = flags.get(p.id) or {}
+        out.append(
+            resp.model_copy(
+                update={
+                    "fatigue_warning": bool(f.get("fatigue_warning")),
+                    "fatigue_hints": f.get("fatigue_hints") or [],
+                }
+            )
+        )
+    return out
 
 
 @router.get("/queue", response_model=ReviewQueueResponse)
@@ -31,7 +49,7 @@ async def get_review_queue(
     items, total = await review_service.get_review_queue(
         db, merchant_id=merchant_id, limit=limit, offset=offset
     )
-    out = [note_package_service.note_package_to_response(p) for p in items]
+    out = await _note_packages_with_fatigue(db, items)
     return ReviewQueueResponse(items=out, total=total, limit=limit, offset=offset)
 
 
@@ -55,7 +73,7 @@ async def get_review_queue_today(
         offset=offset,
         for_date=for_date,
     )
-    out = [note_package_service.note_package_to_response(p) for p in items]
+    out = await _note_packages_with_fatigue(db, items)
     return ReviewQueueResponse(items=out, total=total, limit=limit, offset=offset)
 
 

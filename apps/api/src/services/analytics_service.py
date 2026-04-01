@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import NotePackage, PerformanceMetrics, Product
-from src.schemas import MetricsIngestRequest
+from src.schemas import MetricsBatchIngestResponse, MetricsIngestRequest
 
 
 def _parse_metrics_csv(content: bytes) -> list[dict]:
@@ -59,6 +59,35 @@ async def ingest_metrics(
     await db.commit()
     await db.refresh(metrics)
     return metrics
+
+
+async def ingest_metrics_batch(
+    db: AsyncSession,
+    items: list[MetricsIngestRequest],
+) -> MetricsBatchIngestResponse:
+    """BL-202: batch upsert; one commit. Rows referencing missing packages are skipped."""
+    created = 0
+    updated = 0
+    skipped = 0
+    for data in items:
+        pkg = await db.get(NotePackage, data.note_package_id)
+        if pkg is None:
+            skipped += 1
+            continue
+        stmt = select(PerformanceMetrics).where(
+            PerformanceMetrics.note_package_id == data.note_package_id,
+            PerformanceMetrics.date == data.date,
+        )
+        existing = (await db.execute(stmt)).scalar_one_or_none()
+        if existing is not None:
+            for field, value in data.model_dump(exclude={"note_package_id", "date"}).items():
+                setattr(existing, field, value)
+            updated += 1
+        else:
+            db.add(PerformanceMetrics(**data.model_dump()))
+            created += 1
+    await db.commit()
+    return MetricsBatchIngestResponse(created=created, updated=updated, skipped=skipped)
 
 
 async def ingest_metrics_csv(

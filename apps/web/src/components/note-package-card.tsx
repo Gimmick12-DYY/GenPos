@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, MessageCircle, Bookmark, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,10 @@ interface NotePackageCardProps {
   /** Phase 2 / BL-208: trigger on-demand generation for the same product */
   onGenerateMore?: () => void;
   generateMorePending?: boolean;
+  /** Open full preview (titles, body, images) */
+  onOpenDetail?: () => void;
+  fatigueWarning?: boolean;
+  fatigueHints?: string[];
   className?: string;
 }
 
@@ -34,16 +38,22 @@ export function NotePackageCard({
   onReject,
   onGenerateMore,
   generateMorePending = false,
+  onOpenDetail,
+  fatigueWarning = false,
+  fatigueHints = [],
   className,
 }: NotePackageCardProps) {
   const [coverFailed, setCoverFailed] = useState(false);
 
   return (
     <Card
+      onClick={onOpenDetail}
       className={cn(
         "group overflow-hidden ring-1 ring-stone-100/80",
+        onOpenDetail && "cursor-pointer transition-shadow hover:ring-stone-200",
         className,
       )}
+      aria-label={onOpenDetail ? "点击查看完整笔记方案" : undefined}
     >
       {/* Cover image */}
       <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200/90">
@@ -65,6 +75,16 @@ export function NotePackageCard({
         )}
 
         {/* Score badge */}
+        {fatigueWarning && (
+          <div
+            className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md backdrop-blur-sm"
+            title={fatigueHints.join("；") || "该方向互动下滑，建议换角度"}
+          >
+            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+            疲劳
+          </div>
+        )}
+
         {score !== undefined && (
           <div className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-stone-900/75 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
             {score}
@@ -85,10 +105,13 @@ export function NotePackageCard({
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-stone-900">
             {title}
           </h3>
-          <button className="shrink-0 rounded p-0.5 text-stone-400 opacity-0 transition-opacity hover:text-stone-600 group-hover:opacity-100">
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
         </div>
+
+        {fatigueWarning && fatigueHints.length > 0 && (
+          <p className="mb-2 line-clamp-2 text-[11px] text-amber-800/90">
+            {fatigueHints[0]}
+          </p>
+        )}
 
         <div className="flex items-center justify-between">
           <StatusBadge status={complianceStatus} />
@@ -112,7 +135,10 @@ export function NotePackageCard({
                 {onApprove && (
                   <button
                     type="button"
-                    onClick={onApprove}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onApprove();
+                    }}
                     className="flex-1 rounded-md bg-emerald-50 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
                   >
                     通过
@@ -121,7 +147,10 @@ export function NotePackageCard({
                 {onReject && (
                   <button
                     type="button"
-                    onClick={onReject}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReject();
+                    }}
                     className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
                   >
                     拒绝
@@ -132,7 +161,10 @@ export function NotePackageCard({
             {onGenerateMore && (
               <button
                 type="button"
-                onClick={onGenerateMore}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerateMore();
+                }}
                 disabled={generateMorePending}
                 className="w-full rounded-md border border-primary/25 bg-primary/5 py-1.5 text-xs font-medium text-primary-dark transition-colors hover:bg-primary/10 disabled:opacity-50"
               >

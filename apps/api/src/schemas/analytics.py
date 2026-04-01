@@ -20,6 +20,18 @@ class MetricsIngestRequest(BaseSchema):
     revenue: float = Field(default=0.0, ge=0)
 
 
+class MetricsBatchIngestRequest(BaseSchema):
+    """BL-202: batch upsert of performance rows in one transaction."""
+
+    items: list[MetricsIngestRequest] = Field(..., min_length=1, max_length=2000)
+
+
+class MetricsBatchIngestResponse(BaseSchema):
+    created: int
+    updated: int
+    skipped: int
+
+
 class PerformanceResponse(BaseSchema):
     id: UUID
     note_package_id: UUID

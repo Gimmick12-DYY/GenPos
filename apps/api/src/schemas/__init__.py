@@ -11,6 +11,8 @@ from .agent_team import (
 )
 from .analytics import (
     FatigueDimensionResponse,
+    MetricsBatchIngestRequest,
+    MetricsBatchIngestResponse,
     MetricsIngestRequest,
     MetricsUploadResponse,
     PerformanceResponse,
@@ -121,6 +123,8 @@ __all__ = [
     # analytics
     "FatigueDimensionResponse",
     "MetricsIngestRequest",
+    "MetricsBatchIngestRequest",
+    "MetricsBatchIngestResponse",
     "MetricsUploadResponse",
     "PerformanceResponse",
     "ProductFatigueResponse",

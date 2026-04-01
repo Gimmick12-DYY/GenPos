@@ -5,7 +5,7 @@ per product per dimension (style_family, objective) to detect declining patterns
 
 from __future__ import annotations
 
-from datetime import date, timedelta, timezone
+from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -125,3 +125,54 @@ async def get_product_fatigue(
         "dimensions": dimensions,
         "threshold": FATIGUE_THRESHOLD,
     }
+
+
+async def fatigue_flags_for_packages(
+    db: AsyncSession,
+    packages: list,
+) -> dict:
+    """
+    Map note_package_id -> {"fatigue_warning": bool, "fatigue_hints": list[str]}.
+    Uses per-product fatigue (cached by product_id) and matches style_family / objective.
+    """
+    if not packages:
+        return {}
+
+    cache: dict = {}
+    product_ids = {p.product_id for p in packages}
+    for pid in product_ids:
+        try:
+            cache[pid] = await get_product_fatigue(db, pid)
+        except HTTPException:
+            cache[pid] = {"dimensions": [], "threshold": FATIGUE_THRESHOLD}
+
+    out: dict = {}
+    for pkg in packages:
+        data = cache.get(pkg.product_id) or {"dimensions": []}
+        hints: list[str] = []
+        warn = False
+        for d in data.get("dimensions", []):
+            if float(d.get("fatigue_score", 0)) < FATIGUE_THRESHOLD:
+                continue
+            dim = d.get("dimension")
+            raw = d.get("value") or ""
+            if raw == "(未设置)":
+                raw = ""
+            rec = (d.get("recommendation") or "").strip()
+            if dim == "style_family":
+                pkg_val = (pkg.style_family or "").strip()
+                if pkg_val == raw.strip():
+                    warn = True
+                    if rec:
+                        hints.append(rec)
+            elif dim == "objective":
+                pkg_val = (pkg.objective or "").strip()
+                if pkg_val == raw.strip():
+                    warn = True
+                    if rec:
+                        hints.append(rec)
+        out[pkg.id] = {
+            "fatigue_warning": warn,
+            "fatigue_hints": hints[:4],
+        }
+    return out

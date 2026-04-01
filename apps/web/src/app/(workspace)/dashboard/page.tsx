@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { NotePackageCard } from "@/components/note-package-card";
+import { NotePackageDetailPanel } from "@/components/note-package-detail-panel";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card } from "@/components/ui/card";
 import { Sparkles, TrendingUp, Eye, CalendarDays, Play } from "lucide-react";
@@ -19,6 +20,8 @@ interface NotePackageItem {
   review_status: string;
   cover_url?: string | null;
   product_name?: string | null;
+  fatigue_warning?: boolean | null;
+  fatigue_hints?: string[] | null;
 }
 
 interface ReviewQueueResponse {
@@ -66,6 +69,8 @@ export default function DashboardPage() {
     null
   );
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [detailPackageId, setDetailPackageId] = useState<string | null>(null);
+  const [packagesPerProduct, setPackagesPerProduct] = useState(3);
 
   useEffect(() => {
     ensureAuth()
@@ -142,9 +147,21 @@ export default function DashboardPage() {
     setError(null);
     setInfoMessage(null);
     try {
-      await api.post("/generate/daily/run", {
+      const res = await api.post<Record<string, unknown>>("/generate/daily/run", {
         merchant_id: merchantId,
+        packages_per_product: packagesPerProduct,
       });
+      if (
+        res &&
+        typeof res === "object" &&
+        "workflow_id" in res &&
+        (res as { mode?: string }).mode === "async"
+      ) {
+        setInfoMessage(
+          "每日批次已在后台运行（Temporal），完成后请刷新本页或稍候再试。"
+        );
+        return;
+      }
       await loadQueue();
     } catch (e) {
       setError(e instanceof Error ? e.message : "批次触发失败");
@@ -234,6 +251,21 @@ export default function DashboardPage() {
             value={pickDate}
             onChange={(e) => setPickDate(e.target.value)}
             className="input-surface h-9 rounded-xl px-3 py-1.5 text-sm"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-stone-600">
+          <span className="whitespace-nowrap">每产品条数</span>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={packagesPerProduct}
+            onChange={(e) =>
+              setPackagesPerProduct(
+                Math.min(10, Math.max(1, Number(e.target.value) || 1))
+              )
+            }
+            className="input-surface h-9 w-16 rounded-xl px-2 text-center text-sm tabular-nums"
           />
         </label>
         <button
@@ -338,6 +370,9 @@ export default function DashboardPage() {
               complianceStatus={complianceToCardStatus(pkg.compliance_status)}
               likes={0}
               comments={0}
+              fatigueWarning={Boolean(pkg.fatigue_warning)}
+              fatigueHints={pkg.fatigue_hints ?? []}
+              onOpenDetail={() => setDetailPackageId(pkg.id)}
               onApprove={() => handleApprove(pkg.id)}
               onReject={() => handleReject(pkg.id)}
               onGenerateMore={() => void handleGenerateMore(pkg)}
@@ -346,6 +381,11 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      <NotePackageDetailPanel
+        packageId={detailPackageId}
+        onClose={() => setDetailPackageId(null)}
+      />
     </PageShell>
   );
 }
