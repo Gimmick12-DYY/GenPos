@@ -9,9 +9,11 @@ from temporalio.worker import Worker
 
 from src.core.config import settings
 from src.temporal.activities.daily_batch import run_daily_batch_activity
+from src.temporal.activities.daily_run_all import run_daily_run_all_activity
 from src.temporal.activities.on_demand import run_on_demand_pipeline_activity
 from src.temporal.activities.ping import ping_activity
 from src.temporal.workflows.daily_batch import DailyBatchWorkflow
+from src.temporal.workflows.daily_run_all import DailyRunAllScheduledWorkflow
 from src.temporal.workflows.health import HealthCheckWorkflow
 from src.temporal.workflows.on_demand import OnDemandGenerationWorkflow
 
@@ -36,10 +38,16 @@ async def run_worker() -> None:
     worker = Worker(
         client,
         task_queue=settings.temporal_task_queue,
-        workflows=[OnDemandGenerationWorkflow, DailyBatchWorkflow, HealthCheckWorkflow],
+        workflows=[
+            OnDemandGenerationWorkflow,
+            DailyBatchWorkflow,
+            DailyRunAllScheduledWorkflow,
+            HealthCheckWorkflow,
+        ],
         activities=[
             run_on_demand_pipeline_activity,
             run_daily_batch_activity,
+            run_daily_run_all_activity,
             ping_activity,
         ],
     )

@@ -71,6 +71,8 @@ export default function DashboardPage() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [detailPackageId, setDetailPackageId] = useState<string | null>(null);
   const [packagesPerProduct, setPackagesPerProduct] = useState(3);
+  /** Bypass idempotency (Temporal new workflow id; sync re-run even if quota met). */
+  const [forceDailyRun, setForceDailyRun] = useState(false);
 
   useEffect(() => {
     ensureAuth()
@@ -150,6 +152,8 @@ export default function DashboardPage() {
       const res = await api.post<Record<string, unknown>>("/generate/daily/run", {
         merchant_id: merchantId,
         packages_per_product: packagesPerProduct,
+        force: forceDailyRun,
+        skip_if_already_run: !forceDailyRun,
       });
       if (
         res &&
@@ -157,14 +161,36 @@ export default function DashboardPage() {
         "workflow_id" in res &&
         (res as { mode?: string }).mode === "async"
       ) {
+        const sd = (res as { shanghai_date?: string }).shanghai_date;
         setInfoMessage(
-          "每日批次已在后台运行（Temporal），完成后请刷新本页或稍候再试。"
+          sd
+            ? `每日批次已在后台运行（Temporal），上海日期 ${sd}。完成后请刷新本页。`
+            : "每日批次已在后台运行（Temporal），完成后请刷新本页或稍候再试。"
+        );
+        return;
+      }
+      const sync = res as { skipped?: boolean; reason?: string };
+      if (sync.skipped && sync.reason === "already_run_today") {
+        setInfoMessage(
+          "今日该商户的自动批次配额已满足，已跳过。勾选「强制再跑」可重新生成。"
         );
         return;
       }
       await loadQueue();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "批次触发失败");
+      const msg = e instanceof Error ? e.message : "批次触发失败";
+      const lower = typeof msg === "string" ? msg.toLowerCase() : "";
+      if (
+        lower.includes("already ran") ||
+        lower.includes("force=true") ||
+        lower.includes("workflow") && lower.includes("today")
+      ) {
+        setError(
+          "今日该商户的每日批次已在运行或已完成。勾选「强制再跑」后重试，或明日再试。"
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setRunningBatch(false);
     }
@@ -268,6 +294,15 @@ export default function DashboardPage() {
             className="input-surface h-9 w-16 rounded-xl px-2 text-center text-sm tabular-nums"
           />
         </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-600">
+          <input
+            type="checkbox"
+            checked={forceDailyRun}
+            onChange={(e) => setForceDailyRun(e.target.checked)}
+            className="h-4 w-4 rounded border-stone-300 text-primary focus:ring-primary/30"
+          />
+          <span className="whitespace-nowrap">强制再跑</span>
+        </label>
         <button
           type="button"
           onClick={() => void runDailyBatch()}
@@ -349,9 +384,9 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-dashed border-stone-300/80 bg-surface-raised/80 py-16 text-center text-stone-500 shadow-sm">
           <p className="font-medium text-stone-700">该日暂无自动批次待审笔记</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed">
-            「今日推荐」只展示来源为每日自动任务（daily_auto）的包。请点击「运行每日生成」，或配置
-            Temporal / <code className="rounded bg-stone-100 px-1.5 py-0.5 text-xs">POST /generate/daily/run</code>
-            。一键生成与对话产生的内容请在「待审核」查看。
+            「今日推荐」只展示来源为每日自动任务（daily_auto）的包。请点击「运行每日生成」，或由运维配置
+            Temporal 定时任务（<code className="rounded bg-stone-100 px-1.5 py-0.5 text-xs">scripts/register_daily_schedule.py</code>
+            ）。一键生成与对话产生的内容请在「待审核」查看。
           </p>
         </div>
       ) : (
