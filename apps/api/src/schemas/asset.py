@@ -8,16 +8,15 @@ from pydantic import Field
 
 from .common import BaseSchema, PaginatedResponse
 
-
 # ---------------------------------------------------------------------------
 # Asset Packs
 # ---------------------------------------------------------------------------
 
 class AssetPackCreate(BaseSchema):
-    merchant_id: UUID
+    merchant_id: UUID | None = None
     quarter_label: str = Field(..., max_length=16)
-    effective_from: date
-    effective_to: date
+    effective_from: date | None = None
+    effective_to: date | None = None
 
 
 class AssetPackResponse(BaseSchema):
@@ -50,3 +49,18 @@ class AssetResponse(BaseSchema):
 
 class AssetListResponse(PaginatedResponse[AssetResponse]):
     pass
+
+
+class AssetPackListResponse(PaginatedResponse[AssetPackResponse]):
+    pass
+
+
+class AssetPatch(BaseSchema):
+    """Tag uploaded assets (BL-301 step 3). Cannot change approved assets."""
+
+    type: Literal["packshot", "cutout", "logo", "packaging_ref", "hero", "other"] | None = None
+    product_id: UUID | None = None
+
+
+class AssetRejectRequest(BaseSchema):
+    reason: str = Field(default="", max_length=512)

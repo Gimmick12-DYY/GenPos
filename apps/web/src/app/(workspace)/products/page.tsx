@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Plus, Pencil, Loader2, X, Search } from "lucide-react";
+import { Package, Plus, Pencil, Loader2, X, Search, Upload } from "lucide-react";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
+import { AssetPackWizard } from "@/components/products/asset-pack-wizard";
 
 interface Product {
   id: string;
@@ -37,6 +38,7 @@ export default function ProductsPage() {
   const [formCategory, setFormCategory] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [search, setSearch] = useState("");
+  const [assetWizardOpen, setAssetWizardOpen] = useState(false);
 
   const merchantId = getMerchantId();
 
@@ -127,10 +129,16 @@ export default function ProductsPage() {
         title="我的产品库"
         description="管理产品信息，关联生成的笔记内容"
         actions={
-          <Button onClick={openAdd}>
-            <Plus className="h-4 w-4" />
-            添加产品
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setAssetWizardOpen(true)}>
+              <Upload className="h-4 w-4" />
+              上传素材包
+            </Button>
+            <Button onClick={openAdd}>
+              <Plus className="h-4 w-4" />
+              添加产品
+            </Button>
+          </div>
         }
       />
 
@@ -202,6 +210,12 @@ export default function ProductsPage() {
       )}
 
       {/* Add/Edit modal */}
+      <AssetPackWizard
+        open={assetWizardOpen}
+        onClose={() => setAssetWizardOpen(false)}
+        products={products.map((p) => ({ id: p.id, name: p.name }))}
+      />
+
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-stone-200/80 bg-white shadow-2xl shadow-stone-900/20">

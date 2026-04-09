@@ -636,6 +636,8 @@ Build the asset management layer that the generation pipeline uses: text generat
 
 > **Goal:** Automate daily creative generation, implement performance-driven ranking, and deliver the 今日推荐 dashboard for merchants to review auto-generated content each morning.
 
+**Multi-merchant / full Phase 2 scale:** Additional work (per-tenant schedules, global concurrency, RBAC for operator actions, run-all policy) is **deferred** while the product targets a **single-merchant** deployment. See [`PHASE2_MULTI_MERCHANT_DEFERRED.md`](./PHASE2_MULTI_MERCHANT_DEFERRED.md) for a handoff checklist and code pointers.
+
 ---
 
 ### BL-201: Daily Scheduler (Temporal Workflow)
@@ -830,6 +832,8 @@ Build the Today's Picks (今日推荐) tab as the merchant's daily content dashb
 ## Phase 3 — Quarterly Asset Truth Pipeline
 
 > **Goal:** Implement the slow-clock truth layer: structured ingestion, normalization, and approval of quarterly product asset packs that feed the generation pipeline's visual assets.
+
+**Implementation log (repo):** API extensions (`GET /asset-packs`, submit/activate rules, asset approve/reject/patch) and a first-pass **我的产品库 → 上传素材包** wizard live in the codebase; see git history / `apps/api/src/api/v1/endpoints/assets.py` and `apps/web` product library. Remaining Phase 3 items (BL-302 normalization worker, BL-303 cutouts, BL-306 full library UI, strict RBAC) follow below.
 
 ---
 

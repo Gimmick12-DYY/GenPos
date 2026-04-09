@@ -1,23 +1,24 @@
 import hashlib
 import io
-import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import verify_token
 from src.core.storage import storage
+from src.core.tenant import merchant_id_from_token, resolve_merchant_id
 from src.schemas import (
     AssetListResponse,
     AssetPackCreate,
+    AssetPackListResponse,
     AssetPackResponse,
+    AssetPatch,
+    AssetRejectRequest,
     AssetResponse,
 )
 from src.services import asset_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,23 +31,44 @@ router = APIRouter()
 async def create_asset_pack(
     body: AssetPackCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
-    """Create a new asset pack."""
-    return await asset_service.create_asset_pack(db, body)
+    """Create a new asset pack (draft)."""
+    mid = resolve_merchant_id(body.merchant_id, token)
+    return await asset_service.create_asset_pack(db, mid, body)
+
+
+@router.get("", response_model=AssetPackListResponse)
+async def list_asset_packs(
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    status_filter: str | None = Query(
+        None,
+        alias="status",
+        description="Filter by pack status",
+    ),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List asset packs for the authenticated merchant."""
+    items, total = await asset_service.list_asset_packs(
+        db,
+        merchant_id,
+        status_filter=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return AssetPackListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{pack_id}", response_model=AssetPackResponse)
 async def get_asset_pack(
     pack_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
 ):
-    """Get asset pack by ID."""
-    pack = await asset_service.get_asset_pack(db, pack_id)
-    if pack is None:
-        raise HTTPException(status_code=404, detail="Asset pack not found")
-    return pack
+    """Get asset pack by ID (tenant-scoped)."""
+    return await asset_service.get_pack_for_merchant(db, pack_id, merchant_id)
 
 
 def _image_dimensions(data: bytes) -> tuple[int, int]:
@@ -58,6 +80,29 @@ def _image_dimensions(data: bytes) -> tuple[int, int]:
         return img.size
     except Exception:
         return 0, 0
+
+
+@router.post(
+    "/{pack_id}/submit",
+    response_model=AssetPackResponse,
+)
+async def submit_asset_pack(
+    pack_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move pack from draft to pending_review (requires ≥1 approved packshot)."""
+    return await asset_service.submit_asset_pack_for_review(db, merchant_id, pack_id)
+
+
+@router.post("/{pack_id}/activate", response_model=AssetPackResponse)
+async def activate_asset_pack(
+    pack_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Activate pack from pending_review (archives prior active pack for same quarter)."""
+    return await asset_service.activate_asset_pack(db, merchant_id, pack_id)
 
 
 @router.post(
@@ -74,12 +119,11 @@ async def upload_asset(
     token_payload: dict = Depends(verify_token),
 ):
     """Upload an asset to a pack via S3-compatible storage."""
+    merchant_id = resolve_merchant_id(None, token_payload)
     contents = await file.read()
     checksum = hashlib.sha256(contents).hexdigest()
 
     width, height = _image_dimensions(contents)
-
-    merchant_id = token_payload.get("merchant_id", "unknown")
 
     file_url = await storage.upload_file(
         file_content=contents,
@@ -91,6 +135,7 @@ async def upload_asset(
 
     return await asset_service.add_asset_to_pack(
         db,
+        merchant_id=merchant_id,
         pack_id=pack_id,
         file_url=file_url,
         asset_type=asset_type,
@@ -106,19 +151,57 @@ async def list_pack_assets(
     pack_id: UUID,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    merchant_id: UUID = Depends(merchant_id_from_token),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
 ):
     """List assets in a pack."""
+    await asset_service.get_pack_for_merchant(db, pack_id, merchant_id)
     items, total = await asset_service.list_assets(db, pack_id, limit, offset)
     return AssetListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-@router.post("/{pack_id}/activate", response_model=AssetPackResponse)
-async def activate_asset_pack(
+@router.patch("/{pack_id}/assets/{asset_id}", response_model=AssetResponse)
+async def patch_pack_asset(
     pack_id: UUID,
+    asset_id: UUID,
+    body: AssetPatch,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
 ):
-    """Activate an asset pack (archives the previously active pack for the same quarter)."""
-    return await asset_service.activate_asset_pack(db, pack_id)
+    """Tag asset type / product while pack is draft."""
+    return await asset_service.patch_asset(
+        db, merchant_id, pack_id, asset_id, body
+    )
+
+
+@router.post("/{pack_id}/assets/{asset_id}/approve", response_model=AssetResponse)
+async def approve_pack_asset(
+    pack_id: UUID,
+    asset_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    token: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Approve a pending asset (BL-304; RBAC roles deferred)."""
+    sub = token.get("sub")
+    actor = str(sub) if sub is not None else None
+    return await asset_service.approve_asset(
+        db, merchant_id, pack_id, asset_id, actor
+    )
+
+
+@router.post("/{pack_id}/assets/{asset_id}/reject", response_model=AssetResponse)
+async def reject_pack_asset(
+    pack_id: UUID,
+    asset_id: UUID,
+    body: AssetRejectRequest,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    token: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reject a pending asset with optional reason."""
+    sub = token.get("sub")
+    actor = str(sub) if sub is not None else None
+    return await asset_service.reject_asset(
+        db, merchant_id, pack_id, asset_id, body.reason, actor
+    )
