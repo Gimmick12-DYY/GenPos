@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import verify_token
+from src.core.tenant import resolve_merchant_id
 from src.schemas import ProductCreate, ProductFatigueResponse, ProductResponse, ProductUpdate
 from src.services import fatigue_service, product_service
 
@@ -19,10 +20,12 @@ router = APIRouter()
 async def create_product(
     body: ProductCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
     """Create a new product."""
-    return await product_service.create_product(db, body)
+    mid = resolve_merchant_id(body.merchant_id, token)
+    body_eff = body.model_copy(update={"merchant_id": mid})
+    return await product_service.create_product(db, body_eff)
 
 
 @router.get("/{product_id}/fatigue", response_model=ProductFatigueResponse)

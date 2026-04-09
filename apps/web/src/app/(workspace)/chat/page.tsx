@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Send, Bot, User, Trash2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, postSse } from "@/lib/api";
-import { ensureAuth, getMerchantId } from "@/lib/auth";
+import { ensureAuth } from "@/lib/auth";
 
 const SESSION_KEY = "genpos_chat_session_id";
 
@@ -66,12 +66,11 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!authReady) return;
-    const merchantId = getMerchantId();
     const sid = sessionIdRef.current || ensureSessionId();
-    if (!merchantId || !sid) return;
+    if (!sid) return;
     api
       .get<ChatHistoryRow[]>(
-        `/chat/messages?merchant_id=${merchantId}&session_id=${sid}&limit=80`
+        `/chat/messages?session_id=${sid}&limit=80`
       )
       .then((rows) => {
         if (!rows.length) {
@@ -105,11 +104,6 @@ export default function ChatPage() {
     const text = input.trim();
     if (!text || !authReady) return;
 
-    const merchantId = getMerchantId();
-    if (!merchantId) {
-      setAuthError("未获取到商户信息，请刷新重试");
-      return;
-    }
     const sid = sessionIdRef.current || ensureSessionId();
 
     const userMsg: Message = {
@@ -135,7 +129,6 @@ export default function ChatPage() {
       await postSse(
         "/chat/stream",
         {
-          merchant_id: merchantId,
           session_id: sid,
           message: text,
           objective: "seeding",
@@ -219,14 +212,12 @@ export default function ChatPage() {
     ) {
       return;
     }
-    const merchantId = getMerchantId();
     const sid = sessionIdRef.current || ensureSessionId();
-    if (!merchantId) return;
     setClearing(true);
     setChatNotice(null);
     try {
       await api.delete<{ deleted: number }>(
-        `/chat/session?merchant_id=${merchantId}&session_id=${sid}`
+        `/chat/session?session_id=${sid}`
       );
       setMessages([welcomeMessage]);
     } catch (e) {
@@ -272,7 +263,7 @@ export default function ChatPage() {
                   营销助手
                 </h2>
                 <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
-                  结合「我的产品库」与你对话；内容按商户隔离并同步保存。
+                  结合「我的产品库」与你对话；会话与笔记与当前登录商户绑定。
                 </p>
               </div>
             </div>

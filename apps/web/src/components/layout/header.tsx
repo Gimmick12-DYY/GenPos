@@ -11,7 +11,7 @@ export function Header() {
           aria-hidden
         />
         <p className="text-xs font-medium text-stone-400">
-          当前工作区 · 内容已按商户隔离
+          当前工作区 · 单商户实例（数据与登录商户绑定）
         </p>
       </div>
 

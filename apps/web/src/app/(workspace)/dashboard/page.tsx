@@ -92,7 +92,7 @@ export default function DashboardPage() {
     setError(null);
     try {
       const res = await api.get<ReviewQueueResponse>(
-        `/review/queue/today?merchant_id=${merchantId}&limit=50&offset=0&for_date=${pickDate}`
+        `/review/queue/today?limit=50&offset=0&for_date=${pickDate}`
       );
       setQueue(res);
     } catch (e) {
@@ -143,14 +143,12 @@ export default function DashboardPage() {
   }
 
   async function runDailyBatch() {
-    const merchantId = getMerchantId();
-    if (!merchantId) return;
+    if (!getMerchantId()) return;
     setRunningBatch(true);
     setError(null);
     setInfoMessage(null);
     try {
       const res = await api.post<Record<string, unknown>>("/generate/daily/run", {
-        merchant_id: merchantId,
         packages_per_product: packagesPerProduct,
         force: forceDailyRun,
         skip_if_already_run: !forceDailyRun,
@@ -204,7 +202,6 @@ export default function DashboardPage() {
     setInfoMessage(null);
     try {
       const res = await api.post<Record<string, unknown>>("/generate/request", {
-        merchant_id: merchantId,
         product_id: pkg.product_id,
         objective: pkg.objective || "种草",
         persona: undefined,

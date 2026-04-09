@@ -274,7 +274,6 @@ export default function GeneratePage() {
   );
 
   async function pollUntilJobComplete(
-    merchantId: string,
     jobId: string
   ): Promise<ReviewQueueItem | null> {
     const maxAttempts = 180;
@@ -287,7 +286,7 @@ export default function GeneratePage() {
       }
       if (job.status === "completed") {
         const queue = await api.get<ReviewQueueResponse>(
-          `/review/queue?merchant_id=${merchantId}&limit=30&offset=0`
+          `/review/queue?limit=30&offset=0`
         );
         const match = queue.items.find(
           (p) => p.generation_job_id === jobId
@@ -313,17 +312,10 @@ export default function GeneratePage() {
     setIsGenerating(true);
     try {
       await ensureAuth();
-      const merchantId = getMerchantId();
-      if (!merchantId) {
-        setSubmitError("未获取到商户信息，请刷新页面重试。");
-        return;
-      }
-
       const persona =
         [data.targetAudience, data.tone].filter(Boolean).join(" · ") || "";
 
       const body = {
-        merchant_id: merchantId,
         product_id: data.product,
         objective: data.objective,
         persona: persona || undefined,
@@ -347,10 +339,7 @@ export default function GeneratePage() {
         const asyncRes = res as GenerationAsyncStart;
         setPollMessage("任务已排队，正在生成，请稍候…");
         try {
-          const pkg = await pollUntilJobComplete(
-            merchantId,
-            asyncRes.generation_job_id
-          );
+          const pkg = await pollUntilJobComplete(asyncRes.generation_job_id);
           setPollMessage(null);
           if (pkg) {
             setCreatedPackage(pkg);
@@ -373,7 +362,7 @@ export default function GeneratePage() {
       }
       if (sync.note_package_id) {
         const queue = await api.get<ReviewQueueResponse>(
-          `/review/queue?merchant_id=${merchantId}&limit=30&offset=0`
+          `/review/queue?limit=30&offset=0`
         );
         const pkg =
           queue.items.find(

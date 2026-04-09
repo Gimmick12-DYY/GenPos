@@ -52,7 +52,7 @@ class ImageAssetCreate(BaseSchema):
 
 
 class NotePackageCreate(BaseSchema):
-    merchant_id: UUID
+    merchant_id: UUID | None = None
     product_id: UUID
     asset_pack_id: UUID | None = None
     generation_job_id: UUID | None = None

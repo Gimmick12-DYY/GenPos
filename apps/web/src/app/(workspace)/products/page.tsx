@@ -92,7 +92,6 @@ export default function ProductsPage() {
     try {
       if (modalOpen === "add") {
         await api.post("/products", {
-          merchant_id: merchantId,
           name: formName.trim(),
           category: formCategory.trim(),
           description: formDescription.trim() || null,

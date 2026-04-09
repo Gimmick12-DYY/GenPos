@@ -12,6 +12,7 @@ from src.core.config import settings
 from src.core.database import async_session_factory, get_db
 from src.core.security import verify_cron_or_jwt, verify_token
 from src.core.shanghai_calendar import shanghai_date_iso
+from src.core.tenant import resolve_merchant_id
 from src.models import GenerationJob, GenerationTask, NotePackage
 from src.schemas import (
     DailyBatchAsyncStartResponse,
@@ -63,10 +64,11 @@ async def _apply_generation_job_timeout(db: AsyncSession, job: GenerationJob) ->
 async def generate_on_demand(
     body: GenerationRequest,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
     """Submit an on-demand generation request and run the full agent pipeline."""
-    active = await _count_active_generation_jobs(db, body.merchant_id)
+    merchant_id = resolve_merchant_id(body.merchant_id, token)
+    active = await _count_active_generation_jobs(db, merchant_id)
     if active >= settings.max_concurrent_generation_jobs:
         raise HTTPException(
             status_code=429,
@@ -75,7 +77,7 @@ async def generate_on_demand(
 
     if settings.use_temporal_for_generation:
         job = GenerationJob(
-            merchant_id=body.merchant_id,
+            merchant_id=merchant_id,
             source_mode="on_demand",
             trigger_type="user_request",
             status="pending",
@@ -86,7 +88,7 @@ async def generate_on_demand(
 
         payload = {
             "job_id": str(job.id),
-            "merchant_id": str(body.merchant_id),
+            "merchant_id": str(merchant_id),
             "product_id": str(body.product_id) if body.product_id else None,
             "user_message": "",
             "objective": body.objective,
@@ -124,7 +126,7 @@ async def generate_on_demand(
 
     result = await generation_service.run_on_demand_generation(
         db=db,
-        merchant_id=body.merchant_id,
+        merchant_id=merchant_id,
         product_id=body.product_id,
         objective=body.objective,
         persona=body.persona or "",
@@ -144,21 +146,22 @@ async def generate_on_demand(
 async def trigger_daily_generation(
     body: DailyRunRequest,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
     """Trigger daily generation for a merchant: all active products (sync or Temporal)."""
+    merchant_id = resolve_merchant_id(body.merchant_id, token)
     date_str = shanghai_date_iso()
     if settings.use_temporal_for_daily_batch:
         try:
             client = await get_temporal_client()
             if body.force:
-                wf_id = f"daily-batch-{body.merchant_id}-{date_str}-{uuid4().hex[:8]}"
+                wf_id = f"daily-batch-{merchant_id}-{date_str}-{uuid4().hex[:8]}"
             else:
-                wf_id = f"daily-batch-{body.merchant_id}-{date_str}"
+                wf_id = f"daily-batch-{merchant_id}-{date_str}"
             handle = await client.start_workflow(
                 DailyBatchWorkflow.run,
                 {
-                    "merchant_id": str(body.merchant_id),
+                    "merchant_id": str(merchant_id),
                     "packages_per_product": body.packages_per_product,
                 },
                 id=wf_id,
@@ -186,7 +189,7 @@ async def trigger_daily_generation(
 
     result = await generation_service.run_daily_batch(
         db,
-        merchant_id=body.merchant_id,
+        merchant_id=merchant_id,
         packages_per_product=body.packages_per_product,
         max_concurrent=1,
         force=body.force,

@@ -11,7 +11,7 @@ from .note_package import NotePackageResponse
 
 
 class GenerationRequest(BaseSchema):
-    merchant_id: UUID
+    merchant_id: UUID | None = None
     product_id: UUID | None = None
     objective: str = Field(..., max_length=128)
     persona: str | None = Field(default=None, max_length=128)
@@ -22,7 +22,7 @@ class GenerationRequest(BaseSchema):
 
 
 class DailyRunRequest(BaseSchema):
-    merchant_id: UUID
+    merchant_id: UUID | None = None
     packages_per_product: int = Field(default=3, ge=1, le=10)
     force: bool = Field(
         default=False,

@@ -101,19 +101,19 @@ export default function ReviewPage() {
     try {
       const [p, a, r, q, l] = await Promise.all([
         api.get<PagedQueue>(
-          `/review/queue?merchant_id=${merchantId}&limit=1&offset=0`
+          `/review/queue?limit=1&offset=0`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=approved&limit=1&offset=0&sort=ranking`
+          `/note-packages?review_status=approved&limit=1&offset=0&sort=ranking`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=rejected&limit=1&offset=0&sort=recent`
+          `/note-packages?review_status=rejected&limit=1&offset=0&sort=recent`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=queued&limit=1&offset=0&sort=recent`
+          `/note-packages?review_status=queued&limit=1&offset=0&sort=recent`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=live&limit=1&offset=0&sort=recent`
+          `/note-packages?review_status=live&limit=1&offset=0&sort=recent`
         ),
       ]);
       setCounts({
@@ -134,16 +134,16 @@ export default function ReviewPage() {
     try {
       const [p, a, q, l] = await Promise.all([
         api.get<PagedQueue>(
-          `/review/queue?merchant_id=${merchantId}&limit=40&offset=0`
+          `/review/queue?limit=40&offset=0`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=approved&limit=40&offset=0&sort=ranking`
+          `/note-packages?review_status=approved&limit=40&offset=0&sort=ranking`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=queued&limit=40&offset=0&sort=recent`
+          `/note-packages?review_status=queued&limit=40&offset=0&sort=recent`
         ),
         api.get<PagedQueue>(
-          `/note-packages?merchant_id=${merchantId}&review_status=live&limit=40&offset=0&sort=recent`
+          `/note-packages?review_status=live&limit=40&offset=0&sort=recent`
         ),
       ]);
       setBoard({
@@ -167,7 +167,7 @@ export default function ReviewPage() {
       try {
         if (tab === "pending") {
           const res = await api.get<PagedQueue>(
-            `/review/queue?merchant_id=${merchantId}&limit=60&offset=0`
+            `/review/queue?limit=60&offset=0`
           );
           setItems(res.items);
           setTotal(res.total);
@@ -175,7 +175,7 @@ export default function ReviewPage() {
           const status = tab === "approved" ? "approved" : "rejected";
           const sort = tab === "approved" ? "ranking" : "recent";
           const res = await api.get<PagedQueue>(
-            `/note-packages?merchant_id=${merchantId}&review_status=${status}&limit=60&offset=0&sort=${sort}`
+            `/note-packages?review_status=${status}&limit=60&offset=0&sort=${sort}`
           );
           setItems(res.items);
           setTotal(res.total);
@@ -249,7 +249,7 @@ export default function ReviewPage() {
     setListError(null);
     try {
       const r = await api.post<{ processed: number }>(
-        `/review/hydrate-missing-images?merchant_id=${merchantId}&limit=15`,
+        `/review/hydrate-missing-images?limit=15`,
       );
       await refreshAll();
       if (r.processed === 0) {

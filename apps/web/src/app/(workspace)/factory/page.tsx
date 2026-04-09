@@ -63,7 +63,7 @@ export default function FactoryPage() {
     setListError(null);
     api
       .get<Paged>(
-        `/note-packages?merchant_id=${merchantId}&limit=100&offset=0&sort=recent`
+        `/note-packages?limit=100&offset=0&sort=recent`
       )
       .then((res) => {
         setRows(

@@ -8,12 +8,12 @@ from .note_package import NotePackageResponse
 
 
 class ChatMessageRequest(BaseSchema):
-    merchant_id: str
+    merchant_id: str | None = None
     message: str
 
 
 class ChatStreamRequest(BaseSchema):
-    merchant_id: str
+    merchant_id: str | None = None
     session_id: str
     message: str
     product_id: str | None = None

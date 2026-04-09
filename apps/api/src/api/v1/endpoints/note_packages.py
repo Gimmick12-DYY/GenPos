@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.orchestrator import orchestrator
 from src.core.database import get_db
 from src.core.security import verify_token
+from src.core.tenant import merchant_id_from_token, resolve_merchant_id
 from src.schemas import (
     ApproveRequest,
     ImageAssetResponse,
@@ -33,7 +34,7 @@ def _assert_merchant(merchant_id: UUID, token: dict) -> None:
 
 @router.get("", response_model=NotePackageListResponse)
 async def list_note_packages_endpoint(
-    merchant_id: UUID = Query(..., description="Merchant scope"),
+    merchant_id: UUID = Depends(merchant_id_from_token),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     review_status: str | None = Query(
@@ -47,10 +48,8 @@ async def list_note_packages_endpoint(
     created_after: datetime | None = Query(None),
     created_before: datetime | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    token: dict = Depends(verify_token),
 ):
     """List note packages for a merchant (内容工厂 / filtered queues)."""
-    _assert_merchant(merchant_id, token)
     sort_key = "ranking" if sort == "ranking" else "recent"
     items, total = await note_package_service.list_note_packages(
         db,
@@ -76,8 +75,9 @@ async def create_note_package_endpoint(
     token: dict = Depends(verify_token),
 ):
     """BL-110: create a note package (manual / import path)."""
-    _assert_merchant(body.merchant_id, token)
-    pkg = await note_package_service.create_note_package(db, body)
+    mid = resolve_merchant_id(body.merchant_id, token)
+    body_eff = body.model_copy(update={"merchant_id": mid})
+    pkg = await note_package_service.create_note_package(db, body_eff)
     base = NotePackageDetailResponse.model_validate(pkg, from_attributes=True)
     return note_package_service.detail_with_client_image_urls(pkg, base)
 

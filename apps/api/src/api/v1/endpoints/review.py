@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.orchestrator import orchestrator
 from src.core.database import get_db
 from src.core.security import verify_token
+from src.core.tenant import merchant_id_from_token
 from src.schemas import (
     ApproveRequest,
     HydrateMissingImagesResponse,
@@ -39,11 +40,10 @@ async def _note_packages_with_fatigue(db, items: list):
 
 @router.get("/queue", response_model=ReviewQueueResponse)
 async def get_review_queue(
-    merchant_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
 ):
     """Get review queue for a merchant (note packages pending review, ranked by score)."""
     items, total = await review_service.get_review_queue(
@@ -55,7 +55,7 @@ async def get_review_queue(
 
 @router.get("/queue/today", response_model=ReviewQueueResponse)
 async def get_review_queue_today(
-    merchant_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     for_date: date | None = Query(
@@ -63,7 +63,6 @@ async def get_review_queue_today(
         description="Calendar day in Asia/Shanghai (default: today); filters daily_auto slate.",
     ),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
 ):
     """今日推荐: pending daily_auto packages for the given Shanghai calendar day."""
     items, total = await review_service.get_review_queue_today(
@@ -79,14 +78,11 @@ async def get_review_queue_today(
 
 @router.post("/hydrate-missing-images", response_model=HydrateMissingImagesResponse)
 async def hydrate_missing_review_images(
-    merchant_id: UUID = Query(...),
+    merchant_id: UUID = Depends(merchant_id_from_token),
     limit: int = Query(10, ge=1, le=30),
     db: AsyncSession = Depends(get_db),
-    token: dict = Depends(verify_token),
 ):
     """Backfill PNGs for pending packages that have image rows but empty image_url."""
-    if str(merchant_id) != str(token.get("sub")):
-        raise HTTPException(status_code=403, detail="Cannot access another merchant's data")
     items, _ = await review_service.get_review_queue(
         db, merchant_id=merchant_id, limit=200, offset=0
     )

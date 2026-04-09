@@ -12,7 +12,7 @@ from .common import BaseSchema, PaginatedResponse
 class ProductCreate(BaseSchema):
     name: str = Field(..., min_length=1, max_length=255)
     category: str = Field(..., max_length=128)
-    merchant_id: UUID
+    merchant_id: UUID | None = None
     primary_objective: str | None = Field(default=None, max_length=255)
     description: str | None = None
 

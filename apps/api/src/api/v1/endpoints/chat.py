@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.llm_client import llm_client
 from src.core.database import async_session_factory, get_db
 from src.core.security import verify_token
+from src.core.tenant import merchant_id_from_token, parse_optional_merchant_id_str
 from src.schemas import (
     ChatHistoryMessage,
     ChatMessageRequest,
@@ -31,20 +32,13 @@ def _parse_uuid(value: str, field: str) -> UUID:
         raise HTTPException(status_code=400, detail=f"Invalid {field}") from e
 
 
-def _assert_merchant(merchant_id: UUID, token: dict) -> None:
-    if str(merchant_id) != str(token.get("sub")):
-        raise HTTPException(status_code=403, detail="Cannot access another merchant's data")
-
-
 @router.delete("/session", response_model=ChatSessionClearResponse)
 async def clear_chat_session(
-    merchant_id: UUID,
     session_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     db: AsyncSession = Depends(get_db),
-    token: dict = Depends(verify_token),
 ):
     """Delete all messages for this chat session (server-side history)."""
-    _assert_merchant(merchant_id, token)
     deleted = await chat_service.delete_session_messages(
         db, merchant_id=merchant_id, session_id=session_id
     )
@@ -53,14 +47,12 @@ async def clear_chat_session(
 
 @router.get("/messages", response_model=list[ChatHistoryMessage])
 async def list_chat_messages(
-    merchant_id: UUID,
     session_id: UUID,
+    merchant_id: UUID = Depends(merchant_id_from_token),
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    token: dict = Depends(verify_token),
 ):
     """BL-101: paginated chat history for a session."""
-    _assert_merchant(merchant_id, token)
     rows = await chat_service.list_messages(
         db, merchant_id=merchant_id, session_id=session_id, limit=limit
     )
@@ -83,11 +75,7 @@ async def send_chat_message(
     token: dict = Depends(verify_token),
 ):
     """Send a free-text message to the Founder Copilot and run the generation pipeline."""
-    try:
-        merchant_uuid = UUID(body.merchant_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid merchant_id format")
-    _assert_merchant(merchant_uuid, token)
+    merchant_uuid = parse_optional_merchant_id_str(body.merchant_id, token)
 
     try:
         result = await generation_service.run_on_demand_generation(
@@ -133,9 +121,8 @@ async def send_chat_message(
 
 
 async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIterator[str]:
-    merchant_uuid = _parse_uuid(body.merchant_id, "merchant_id")
+    merchant_uuid = parse_optional_merchant_id_str(body.merchant_id, token)
     session_uuid = _parse_uuid(body.session_id, "session_id")
-    _assert_merchant(merchant_uuid, token)
 
     product_id: UUID | None = None
     if body.product_id:
