@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from .merchant import Merchant
+    from .note_package import ImageAsset, NotePackage
+    from .product import Product
 
 
 class AssetPack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -22,6 +28,7 @@ class AssetPack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     merchant: Mapped[Merchant] = relationship("Merchant", back_populates="asset_packs")
     assets: Mapped[list[Asset]] = relationship(
@@ -67,11 +74,3 @@ class Asset(UUIDPrimaryKeyMixin, Base):
 
     def __repr__(self) -> str:
         return f"<Asset type={self.type!r} id={self.id}>"
-
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .merchant import Merchant
-    from .product import Product
-    from .note_package import NotePackage, ImageAsset

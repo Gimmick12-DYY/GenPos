@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Package, Plus, Pencil, Loader2, X, Search, Upload } from "lucide-react";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { ensureAuth, getMerchantId } from "@/lib/auth";
+import { AssetPackPanel } from "@/components/products/asset-pack-panel";
 import { AssetPackWizard } from "@/components/products/asset-pack-wizard";
 
 interface Product {
@@ -39,8 +40,13 @@ export default function ProductsPage() {
   const [formDescription, setFormDescription] = useState("");
   const [search, setSearch] = useState("");
   const [assetWizardOpen, setAssetWizardOpen] = useState(false);
+  const [wizardBootPackId, setWizardBootPackId] = useState<string | null>(null);
 
   const merchantId = getMerchantId();
+
+  const handleWizardBootHandled = useCallback(() => {
+    setWizardBootPackId(null);
+  }, []);
 
   async function loadProducts() {
     if (!merchantId) return;
@@ -148,6 +154,15 @@ export default function ProductsPage() {
         </div>
       )}
 
+      {merchantId ? (
+        <AssetPackPanel
+          onContinueDraft={(id) => {
+            setWizardBootPackId(id);
+            setAssetWizardOpen(true);
+          }}
+        />
+      ) : null}
+
       <div className="relative mb-6">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input
@@ -212,7 +227,12 @@ export default function ProductsPage() {
       {/* Add/Edit modal */}
       <AssetPackWizard
         open={assetWizardOpen}
-        onClose={() => setAssetWizardOpen(false)}
+        onClose={() => {
+          setAssetWizardOpen(false);
+          setWizardBootPackId(null);
+        }}
+        bootPackId={wizardBootPackId}
+        onBootPackHandled={handleWizardBootHandled}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
       />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronLeft,
@@ -28,6 +28,7 @@ interface AssetPack {
   status: string;
   effective_from: string | null;
   effective_to: string | null;
+  metadata_json?: Record<string, unknown> | null;
 }
 
 interface PackListResponse {
@@ -68,13 +69,23 @@ const ASSET_TYPES: { value: AssetType; label: string }[] = [
 
 const MAX_BATCH = 50;
 
+function pickImageFiles(list: Iterable<File>): File[] {
+  return Array.from(list).filter((f) => f.type.startsWith("image/"));
+}
+
 export function AssetPackWizard(props: {
   open: boolean;
   onClose: () => void;
   products: ProductOption[];
   onSubmitted?: () => void;
+  /** Open wizard directly on this pack (draft resume from parent). */
+  bootPackId?: string | null;
+  onBootPackHandled?: () => void;
 }) {
-  const { open, onClose, products, onSubmitted } = props;
+  const { open, onClose, products, onSubmitted, bootPackId, onBootPackHandled } =
+    props;
+  const onBootHandledRef = useRef(onBootPackHandled);
+  onBootHandledRef.current = onBootPackHandled;
   const [step, setStep] = useState(1);
   const [packId, setPackId] = useState<string | null>(null);
   const [quarterLabel, setQuarterLabel] = useState("2026_Q2");
@@ -90,6 +101,8 @@ export function AssetPackWizard(props: {
   const [localTags, setLocalTags] = useState<
     Record<string, { type: AssetType; product_id: string }>
   >({});
+  const [bootLoading, setBootLoading] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
 
   const reset = useCallback(() => {
     setStep(1);
@@ -102,7 +115,53 @@ export function AssetPackWizard(props: {
     setUploadDone(0);
     setAssets([]);
     setLocalTags({});
+    setBootLoading(false);
+    setDropActive(false);
   }, []);
+
+  useEffect(() => {
+    if (!open || !bootPackId?.trim()) return;
+    let cancelled = false;
+    setBootLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const pack = await api.get<AssetPack>(`/asset-packs/${bootPackId.trim()}`);
+        if (cancelled) return;
+        setPackId(pack.id);
+        setQuarterLabel(pack.quarter_label);
+        setEffectiveFrom(
+          pack.effective_from ? pack.effective_from.slice(0, 10) : ""
+        );
+        setEffectiveTo(pack.effective_to ? pack.effective_to.slice(0, 10) : "");
+        const res = await api.get<AssetListResponse>(
+          `/asset-packs/${pack.id}/assets?limit=100&offset=0`
+        );
+        const rows = res.items || [];
+        setAssets(rows);
+        const next: Record<string, { type: AssetType; product_id: string }> = {};
+        for (const a of rows) {
+          next[a.id] = {
+            type: a.type,
+            product_id: a.product_id || "",
+          };
+        }
+        setLocalTags(next);
+        setStep(rows.length > 0 ? 3 : 2);
+        onBootHandledRef.current?.();
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "无法打开素材包");
+          onBootHandledRef.current?.();
+        }
+      } finally {
+        if (!cancelled) setBootLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, bootPackId]);
 
   useEffect(() => {
     if (!open) {
@@ -281,6 +340,8 @@ export function AssetPackWizard(props: {
 
   if (!open) return null;
 
+  const showBootSpinner = Boolean(bootPackId?.trim() && bootLoading);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-stone-200/80 bg-white shadow-2xl shadow-stone-900/20">
@@ -310,7 +371,14 @@ export function AssetPackWizard(props: {
             </div>
           )}
 
-          {step === 1 && (
+          {showBootSpinner && (
+            <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-stone-500">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-sm">正在打开素材包…</p>
+            </div>
+          )}
+
+          {!showBootSpinner && step === 1 && (
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-stone-700">
@@ -389,21 +457,48 @@ export function AssetPackWizard(props: {
             </div>
           )}
 
-          {step === 2 && packId && (
+          {!showBootSpinner && step === 2 && packId && (
             <div className="space-y-4">
               <p className="text-sm text-stone-600">
-                单次最多 {MAX_BATCH} 张。默认类型为 packshot，可在下一步调整。
+                单次最多 {MAX_BATCH} 张。默认类型为 packshot，可在下一步调整。支持拖拽到下方区域。
               </p>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 py-10 transition-colors hover:border-primary/40 hover:bg-stone-50">
+              <label
+                className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed py-10 transition-colors hover:border-primary/40 hover:bg-stone-50 ${
+                  dropActive
+                    ? "border-primary bg-primary/5"
+                    : "border-stone-200 bg-stone-50/80"
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDropActive(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDropActive(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDropActive(false);
+                  const files = pickImageFiles(e.dataTransfer.files);
+                  setUploadQueue(files.slice(0, MAX_BATCH));
+                }}
+              >
                 <ImagePlus className="h-10 w-10 text-stone-400" />
-                <span className="mt-2 text-sm text-stone-600">点击选择图片</span>
+                <span className="mt-2 text-sm text-stone-600">
+                  点击选择或拖拽图片到此处
+                </span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    const list = e.target.files ? Array.from(e.target.files) : [];
+                    const list = e.target.files
+                      ? pickImageFiles(e.target.files)
+                      : [];
                     setUploadQueue(list.slice(0, MAX_BATCH));
                   }}
                 />
@@ -462,7 +557,7 @@ export function AssetPackWizard(props: {
             </div>
           )}
 
-          {step === 3 && packId && (
+          {!showBootSpinner && step === 3 && packId && (
             <div className="space-y-4">
               <p className="text-sm text-stone-600">
                 为每张图选择类型与关联产品，保存后点击「通过」标记审核。提交前至少需要 1 张已通过的
@@ -598,7 +693,7 @@ export function AssetPackWizard(props: {
             </div>
           )}
 
-          {step === 4 && packId && (
+          {!showBootSpinner && step === 4 && packId && (
             <div className="space-y-4">
               <p className="text-sm text-stone-600">
                 已通过的 packshot：{approvedPackshots} 张

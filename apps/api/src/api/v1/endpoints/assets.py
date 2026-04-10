@@ -99,10 +99,15 @@ async def submit_asset_pack(
 async def activate_asset_pack(
     pack_id: UUID,
     merchant_id: UUID = Depends(merchant_id_from_token),
+    token: dict = Depends(verify_token),
     db: AsyncSession = Depends(get_db),
 ):
     """Activate pack from pending_review (archives prior active pack for same quarter)."""
-    return await asset_service.activate_asset_pack(db, merchant_id, pack_id)
+    sub = token.get("sub")
+    actor = str(sub) if sub is not None else None
+    return await asset_service.activate_asset_pack(
+        db, merchant_id, pack_id, actor_sub=actor
+    )
 
 
 @router.post(

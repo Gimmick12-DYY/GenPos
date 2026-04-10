@@ -95,6 +95,19 @@ async def _assert_activation_date_no_overlap(
             )
 
 
+def _append_pack_activation_audit(pack: AssetPack, actor_sub: str | None) -> None:
+    meta = dict(pack.metadata_json or {})
+    log = list(meta.get("activation_audit") or [])
+    log.append(
+        {
+            "at": datetime.now(UTC).isoformat(),
+            "actor_sub": actor_sub,
+        }
+    )
+    meta["activation_audit"] = log
+    pack.metadata_json = meta
+
+
 async def count_approved_packshots(db: AsyncSession, pack_id: UUID) -> int:
     stmt = select(func.count()).select_from(Asset).where(
         Asset.asset_pack_id == pack_id,
@@ -280,7 +293,11 @@ async def submit_asset_pack_for_review(
 
 
 async def activate_asset_pack(
-    db: AsyncSession, merchant_id: UUID, pack_id: UUID
+    db: AsyncSession,
+    merchant_id: UUID,
+    pack_id: UUID,
+    *,
+    actor_sub: str | None = None,
 ) -> AssetPack:
     pack = await get_pack_for_merchant(db, pack_id, merchant_id)
     if pack.status != "pending_review":
@@ -309,6 +326,7 @@ async def activate_asset_pack(
     await db.execute(archive_stmt)
 
     pack.status = "active"
+    _append_pack_activation_audit(pack, actor_sub)
     await db.commit()
     await db.refresh(pack)
     return pack

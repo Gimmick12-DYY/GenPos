@@ -26,6 +26,7 @@ class AssetPackResponse(BaseSchema):
     status: Literal["draft", "pending_review", "active", "archived"]
     effective_from: date | None
     effective_to: date | None
+    metadata_json: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -115,6 +115,24 @@ async def test_activate_only_from_pending_review(db_session: AsyncSession) -> No
 
 
 @pytest.mark.asyncio
+async def test_activate_records_activation_audit(
+    db_session: AsyncSession,
+) -> None:
+    m = await _merchant(db_session)
+    pack = await _pack(db_session, m.id)
+    await _packshot(db_session, pack.id, approval_status="approved")
+    await asset_service.submit_asset_pack_for_review(db_session, m.id, pack.id)
+    out = await asset_service.activate_asset_pack(
+        db_session, m.id, pack.id, actor_sub="actor-1"
+    )
+    assert out.metadata_json is not None
+    audit = out.metadata_json.get("activation_audit")
+    assert isinstance(audit, list) and len(audit) == 1
+    assert audit[0].get("actor_sub") == "actor-1"
+    assert audit[0].get("at")
+
+
+@pytest.mark.asyncio
 async def test_activate_archives_prior_same_quarter(
     db_session: AsyncSession,
 ) -> None:
