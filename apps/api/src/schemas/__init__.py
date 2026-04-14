@@ -20,6 +20,8 @@ from .analytics import (
     ProductPerformanceResponse,
 )
 from .asset import (
+    AssetBulkIdsRequest,
+    AssetBulkRejectRequest,
     AssetListResponse,
     AssetPackCreate,
     AssetPackListResponse,
@@ -105,6 +107,8 @@ __all__ = [
     "AssetListResponse",
     "AssetPatch",
     "AssetRejectRequest",
+    "AssetBulkIdsRequest",
+    "AssetBulkRejectRequest",
     # generation
     "GenerationRequest",
     "DailyRunRequest",

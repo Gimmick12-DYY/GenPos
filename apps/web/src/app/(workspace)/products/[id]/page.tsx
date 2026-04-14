@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft,
+  FileText,
   Loader2,
   Package,
   ImageIcon,
@@ -41,6 +42,20 @@ interface AssetListResponse {
   offset: number;
 }
 
+interface NotePackageRow {
+  id: string;
+  review_status: string;
+  objective: string;
+  source_mode: string;
+  created_at: string;
+  cover_url: string | null;
+}
+
+interface NotePackageListResponse {
+  items: NotePackageRow[];
+  total: number;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const productId = typeof params.id === "string" ? params.id : "";
@@ -48,6 +63,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [assetTotal, setAssetTotal] = useState(0);
+  const [noteRows, setNoteRows] = useState<NotePackageRow[]>([]);
+  const [noteTotal, setNoteTotal] = useState(0);
   const [activePackOnly, setActivePackOnly] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,22 +74,27 @@ export default function ProductDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const p = await api.get<Product>(`/products/${productId}`);
-      setProduct(p);
-      const qs = new URLSearchParams({
-        limit: "48",
-        offset: "0",
-      });
+      const qs = new URLSearchParams({ limit: "48", offset: "0" });
       if (activePackOnly) qs.set("pack_status", "active");
-      const a = await api.get<AssetListResponse>(
-        `/products/${productId}/assets?${qs.toString()}`
-      );
+      const [p, a, notes] = await Promise.all([
+        api.get<Product>(`/products/${productId}`),
+        api.get<AssetListResponse>(
+          `/products/${productId}/assets?${qs.toString()}`
+        ),
+        api.get<NotePackageListResponse>(
+          `/note-packages?product_id=${encodeURIComponent(productId)}&limit=20&offset=0&sort=recent`
+        ),
+      ]);
+      setProduct(p);
       setAssets(a.items || []);
       setAssetTotal(a.total ?? 0);
+      setNoteRows(notes.items || []);
+      setNoteTotal(notes.total ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
       setProduct(null);
       setAssets([]);
+      setNoteRows([]);
     } finally {
       setLoading(false);
     }
@@ -123,6 +145,44 @@ export default function ProductDetailPage() {
           {product.description && (
             <p className="mb-6 max-w-2xl text-sm text-stone-600">{product.description}</p>
           )}
+
+          <Card className="mb-8">
+            <CardContent className="p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-stone-500" />
+                <h2 className="text-base font-semibold text-stone-900">
+                  最近笔记包
+                  <span className="ml-2 text-sm font-normal text-stone-500">
+                    （共 {noteTotal} 条）
+                  </span>
+                </h2>
+              </div>
+              {noteRows.length === 0 ? (
+                <p className="text-sm text-stone-500">暂无关联笔记包。</p>
+              ) : (
+                <ul className="divide-y divide-stone-100">
+                  {noteRows.map((n) => (
+                    <li
+                      key={n.id}
+                      className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700">
+                        {n.review_status}
+                      </span>
+                      <span className="text-sm text-stone-800">{n.objective}</span>
+                      <span className="text-xs text-stone-400">
+                        {n.source_mode} ·{" "}
+                        {n.created_at ? n.created_at.slice(0, 10) : "—"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-3 text-xs text-stone-400">
+                完整审核与发布流程见「内容工厂」与「今日推荐」。
+              </p>
+            </CardContent>
+          </Card>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-stone-900">

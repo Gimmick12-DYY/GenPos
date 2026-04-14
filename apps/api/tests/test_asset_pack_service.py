@@ -74,9 +74,7 @@ async def test_submit_requires_approved_packshot(db_session: AsyncSession) -> No
     pack = await _pack(db_session, m.id)
     await _packshot(db_session, pack.id, approval_status="pending")
     with pytest.raises(HTTPException) as exc:
-        await asset_service.submit_asset_pack_for_review(
-            db_session, m.id, pack.id
-        )
+        await asset_service.submit_asset_pack_for_review(db_session, m.id, pack.id)
     assert exc.value.status_code == 400
     assert "packshot" in exc.value.detail.lower()
 
@@ -86,9 +84,7 @@ async def test_submit_draft_to_pending_review(db_session: AsyncSession) -> None:
     m = await _merchant(db_session)
     pack = await _pack(db_session, m.id)
     await _packshot(db_session, pack.id, approval_status="approved")
-    out = await asset_service.submit_asset_pack_for_review(
-        db_session, m.id, pack.id
-    )
+    out = await asset_service.submit_asset_pack_for_review(db_session, m.id, pack.id)
     assert out.status == "pending_review"
 
 
@@ -98,9 +94,7 @@ async def test_submit_only_from_draft(db_session: AsyncSession) -> None:
     pack = await _pack(db_session, m.id, status="pending_review")
     await _packshot(db_session, pack.id, approval_status="approved")
     with pytest.raises(HTTPException) as exc:
-        await asset_service.submit_asset_pack_for_review(
-            db_session, m.id, pack.id
-        )
+        await asset_service.submit_asset_pack_for_review(db_session, m.id, pack.id)
     assert exc.value.status_code == 400
 
 
@@ -122,9 +116,7 @@ async def test_activate_records_activation_audit(
     pack = await _pack(db_session, m.id)
     await _packshot(db_session, pack.id, approval_status="approved")
     await asset_service.submit_asset_pack_for_review(db_session, m.id, pack.id)
-    out = await asset_service.activate_asset_pack(
-        db_session, m.id, pack.id, actor_sub="actor-1"
-    )
+    out = await asset_service.activate_asset_pack(db_session, m.id, pack.id, actor_sub="actor-1")
     assert out.metadata_json is not None
     audit = out.metadata_json.get("activation_audit")
     assert isinstance(audit, list) and len(audit) == 1
@@ -195,9 +187,7 @@ async def test_get_pack_for_merchant_wrong_tenant(
     m2 = await _merchant(db_session)
     pack = await _pack(db_session, m1.id)
     with pytest.raises(HTTPException) as exc:
-        await asset_service.get_pack_for_merchant(
-            db_session, pack.id, m2.id
-        )
+        await asset_service.get_pack_for_merchant(db_session, pack.id, m2.id)
     assert exc.value.status_code == 404
 
 
@@ -273,14 +263,10 @@ async def test_list_asset_packs_status_filter(db_session: AsyncSession) -> None:
     m = await _merchant(db_session)
     await _pack(db_session, m.id, quarter_label="A", status="draft")
     await _pack(db_session, m.id, quarter_label="B", status="active")
-    drafts, total_d = await asset_service.list_asset_packs(
-        db_session, m.id, status_filter="draft", limit=20, offset=0
-    )
+    drafts, total_d = await asset_service.list_asset_packs(db_session, m.id, status_filter="draft", limit=20, offset=0)
     assert total_d == 1
     assert drafts[0].quarter_label == "A"
-    all_rows, total_all = await asset_service.list_asset_packs(
-        db_session, m.id, status_filter=None, limit=20, offset=0
-    )
+    all_rows, total_all = await asset_service.list_asset_packs(db_session, m.id, status_filter=None, limit=20, offset=0)
     assert total_all == 2
 
 
@@ -289,15 +275,11 @@ async def test_approve_and_reject_pending(db_session: AsyncSession) -> None:
     m = await _merchant(db_session)
     pack = await _pack(db_session, m.id)
     shot = await _packshot(db_session, pack.id, approval_status="pending")
-    out = await asset_service.approve_asset(
-        db_session, m.id, pack.id, shot.id, "user-1"
-    )
+    out = await asset_service.approve_asset(db_session, m.id, pack.id, shot.id, "user-1")
     assert out.approval_status == "approved"
     assert out.metadata_json and "approval_audit" in out.metadata_json
 
     other = await _packshot(db_session, pack.id, approval_status="pending")
-    rej = await asset_service.reject_asset(
-        db_session, m.id, pack.id, other.id, "blur", "user-1"
-    )
+    rej = await asset_service.reject_asset(db_session, m.id, pack.id, other.id, "blur", "user-1")
     assert rej.approval_status == "rejected"
     assert rej.metadata_json.get("reject_reason") == "blur"

@@ -35,6 +35,11 @@ class ProductResponse(BaseSchema):
     description: str | None
     created_at: datetime
     updated_at: datetime
+    active_asset_count: int = Field(
+        default=0,
+        ge=0,
+        description="Assets linked to this product in active asset packs (BL-306).",
+    )
 
 
 class ProductListResponse(PaginatedResponse[ProductResponse]):

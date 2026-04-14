@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Product
+from src.models import Asset, AssetPack, Product
 from src.schemas import ProductCreate, ProductUpdate
 
 
@@ -65,3 +65,23 @@ async def list_products(db: AsyncSession, merchant_id: UUID, limit: int, offset:
     items = list((await db.execute(items_stmt)).scalars().all())
 
     return items, total
+
+
+async def count_active_assets_for_product_ids(
+    db: AsyncSession, merchant_id: UUID, product_ids: list[UUID]
+) -> dict[UUID, int]:
+    """Count assets per product where the asset belongs to an active pack for this merchant."""
+    if not product_ids:
+        return {}
+    stmt = (
+        select(Asset.product_id, func.count(Asset.id))
+        .join(AssetPack, Asset.asset_pack_id == AssetPack.id)
+        .where(
+            Asset.product_id.in_(product_ids),
+            AssetPack.merchant_id == merchant_id,
+            AssetPack.status == "active",
+        )
+        .group_by(Asset.product_id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {row[0]: int(row[1]) for row in rows}

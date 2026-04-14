@@ -20,6 +20,7 @@ interface Product {
   status: string;
   primary_objective: string | null;
   description: string | null;
+  active_asset_count?: number;
 }
 
 interface ProductListResponse {
@@ -214,9 +215,17 @@ export default function ProductsPage() {
                         {product.description}
                       </p>
                     )}
-                    <span className="mt-2 inline-block text-xs font-medium text-primary">
-                      查看详情与素材 →
-                    </span>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-medium text-primary">
+                        查看详情与素材 →
+                      </span>
+                      {typeof product.active_asset_count === "number" &&
+                      product.active_asset_count > 0 ? (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+                          生效素材 {product.active_asset_count}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </Link>
                 <button

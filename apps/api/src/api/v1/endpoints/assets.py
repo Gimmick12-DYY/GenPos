@@ -10,6 +10,8 @@ from src.core.security import verify_token
 from src.core.storage import storage
 from src.core.tenant import merchant_id_from_token, resolve_merchant_id
 from src.schemas import (
+    AssetBulkIdsRequest,
+    AssetBulkRejectRequest,
     AssetListResponse,
     AssetPackCreate,
     AssetPackListResponse,
@@ -171,6 +173,42 @@ async def list_pack_assets(
     await asset_service.get_pack_for_merchant(db, pack_id, merchant_id)
     items, total = await asset_service.list_assets(db, pack_id, limit, offset)
     return AssetListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.post(
+    "/{pack_id}/assets/bulk-approve",
+    response_model=list[AssetResponse],
+)
+async def bulk_approve_pack_assets(
+    pack_id: UUID,
+    body: AssetBulkIdsRequest,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    token: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Approve many pending assets in one transaction (BL-304)."""
+    sub = token.get("sub")
+    actor = str(sub) if sub is not None else None
+    items = await asset_service.bulk_approve_assets(db, merchant_id, pack_id, body.asset_ids, actor)
+    return items
+
+
+@router.post(
+    "/{pack_id}/assets/bulk-reject",
+    response_model=list[AssetResponse],
+)
+async def bulk_reject_pack_assets(
+    pack_id: UUID,
+    body: AssetBulkRejectRequest,
+    merchant_id: UUID = Depends(merchant_id_from_token),
+    token: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reject many pending assets with a shared reason (BL-304)."""
+    sub = token.get("sub")
+    actor = str(sub) if sub is not None else None
+    items = await asset_service.bulk_reject_assets(db, merchant_id, pack_id, body.asset_ids, body.reason, actor)
+    return items
 
 
 @router.patch("/{pack_id}/assets/{asset_id}", response_model=AssetResponse)

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Asset, AssetPack, Merchant, Product
-from src.services import asset_service
+from src.services import asset_service, product_service
 
 
 async def _merchant(db: AsyncSession) -> Merchant:
@@ -115,3 +115,26 @@ async def test_list_assets_by_product_wrong_merchant(
             offset=0,
         )
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_count_active_assets_for_product_ids(db_session: AsyncSession) -> None:
+    m = await _merchant(db_session)
+    prod = Product(merchant_id=m.id, name="P", category="c")
+    db_session.add(prod)
+    await db_session.commit()
+    await db_session.refresh(prod)
+    pack = await _pack(db_session, m.id, status="active")
+    a = Asset(
+        asset_pack_id=pack.id,
+        product_id=prod.id,
+        type="packshot",
+        storage_url="u",
+        approval_status="pending",
+        checksum="1",
+    )
+    db_session.add(a)
+    await db_session.commit()
+
+    counts = await product_service.count_active_assets_for_product_ids(db_session, m.id, [prod.id])
+    assert counts.get(prod.id) == 1

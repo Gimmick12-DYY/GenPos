@@ -291,6 +291,82 @@ async def reject_asset(
     return asset
 
 
+def _dedupe_ids(asset_ids: list[UUID]) -> list[UUID]:
+    return list(dict.fromkeys(asset_ids))
+
+
+async def bulk_approve_assets(
+    db: AsyncSession,
+    merchant_id: UUID,
+    pack_id: UUID,
+    asset_ids: list[UUID],
+    actor_sub: str | None,
+) -> list[Asset]:
+    await get_pack_for_merchant(db, pack_id, merchant_id)
+    ids = _dedupe_ids(asset_ids)
+    if len(ids) > 50:
+        raise HTTPException(status_code=400, detail="At most 50 assets per bulk request")
+    to_update: list[Asset] = []
+    for aid in ids:
+        asset = await db.get(Asset, aid)
+        if asset is None or asset.asset_pack_id != pack_id:
+            raise HTTPException(
+                status_code=400,
+                detail="All asset_ids must belong to this pack",
+            )
+        if asset.approval_status != "pending":
+            raise HTTPException(
+                status_code=400,
+                detail="All assets must be pending for bulk approve",
+            )
+        to_update.append(asset)
+    for asset in to_update:
+        asset.approval_status = "approved"
+        _append_asset_audit(asset, "approved", actor_sub)
+    await db.commit()
+    for asset in to_update:
+        await db.refresh(asset)
+    return to_update
+
+
+async def bulk_reject_assets(
+    db: AsyncSession,
+    merchant_id: UUID,
+    pack_id: UUID,
+    asset_ids: list[UUID],
+    reason: str,
+    actor_sub: str | None,
+) -> list[Asset]:
+    await get_pack_for_merchant(db, pack_id, merchant_id)
+    ids = _dedupe_ids(asset_ids)
+    if len(ids) > 50:
+        raise HTTPException(status_code=400, detail="At most 50 assets per bulk request")
+    to_update: list[Asset] = []
+    for aid in ids:
+        asset = await db.get(Asset, aid)
+        if asset is None or asset.asset_pack_id != pack_id:
+            raise HTTPException(
+                status_code=400,
+                detail="All asset_ids must belong to this pack",
+            )
+        if asset.approval_status != "pending":
+            raise HTTPException(
+                status_code=400,
+                detail="All assets must be pending for bulk reject",
+            )
+        to_update.append(asset)
+    for asset in to_update:
+        asset.approval_status = "rejected"
+        meta = dict(asset.metadata_json or {})
+        meta["reject_reason"] = reason
+        asset.metadata_json = meta
+        _append_asset_audit(asset, "rejected", actor_sub)
+    await db.commit()
+    for asset in to_update:
+        await db.refresh(asset)
+    return to_update
+
+
 async def submit_asset_pack_for_review(db: AsyncSession, merchant_id: UUID, pack_id: UUID) -> AssetPack:
     pack = await get_pack_for_merchant(db, pack_id, merchant_id)
     if pack.status != "draft":

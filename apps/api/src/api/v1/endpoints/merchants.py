@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import verify_token
+from src.core.tenant import resolve_merchant_id
 from src.schemas import (
     MerchantCreate,
     MerchantResponse,
@@ -12,6 +13,7 @@ from src.schemas import (
     MerchantRulesUpdate,
     MerchantUpdate,
     ProductListResponse,
+    ProductResponse,
 )
 from src.services import merchant_service, product_service
 
@@ -87,8 +89,13 @@ async def list_merchant_products(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_token),
+    token: dict = Depends(verify_token),
 ):
     """List all products for a merchant."""
-    items, total = await product_service.list_products(db, merchant_id, limit, offset)
-    return ProductListResponse(items=items, total=total, limit=limit, offset=offset)
+    mid = resolve_merchant_id(merchant_id, token)
+    items, total = await product_service.list_products(db, mid, limit, offset)
+    counts = await product_service.count_active_assets_for_product_ids(db, mid, [p.id for p in items])
+    out = [
+        ProductResponse.model_validate(p).model_copy(update={"active_asset_count": counts.get(p.id, 0)}) for p in items
+    ]
+    return ProductListResponse(items=out, total=total, limit=limit, offset=offset)

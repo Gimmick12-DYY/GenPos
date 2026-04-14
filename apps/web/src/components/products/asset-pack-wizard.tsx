@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Ban,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -103,6 +104,7 @@ export function AssetPackWizard(props: {
   >({});
   const [bootLoading, setBootLoading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [assetSelection, setAssetSelection] = useState<Record<string, boolean>>({});
 
   const reset = useCallback(() => {
     setStep(1);
@@ -117,6 +119,7 @@ export function AssetPackWizard(props: {
     setLocalTags({});
     setBootLoading(false);
     setDropActive(false);
+    setAssetSelection({});
   }, []);
 
   useEffect(() => {
@@ -311,8 +314,65 @@ export function AssetPackWizard(props: {
         `/asset-packs/${packId}/assets/${assetId}/approve`
       );
       setAssets((prev) => prev.map((a) => (a.id === assetId ? updated : a)));
+      setAssetSelection((s) => {
+        const next = { ...s };
+        delete next[assetId];
+        return next;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const selectedPendingIds = assets
+    .filter((a) => a.approval_status === "pending" && assetSelection[a.id])
+    .map((a) => a.id);
+
+  function selectAllPending() {
+    const next: Record<string, boolean> = {};
+    for (const a of assets) {
+      if (a.approval_status === "pending") next[a.id] = true;
+    }
+    setAssetSelection(next);
+  }
+
+  function clearSelection() {
+    setAssetSelection({});
+  }
+
+  async function bulkApproveSelected() {
+    if (!packId || selectedPendingIds.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post<AssetRow[]>(`/asset-packs/${packId}/assets/bulk-approve`, {
+        asset_ids: selectedPendingIds,
+      });
+      await loadAssets(packId);
+      clearSelection();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "批量通过失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bulkRejectSelected() {
+    if (!packId || selectedPendingIds.length === 0) return;
+    const reason = window.prompt("拒绝原因（可留空）", "") ?? "";
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post<AssetRow[]>(`/asset-packs/${packId}/assets/bulk-reject`, {
+        asset_ids: selectedPendingIds,
+        reason,
+      });
+      await loadAssets(packId);
+      clearSelection();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "批量拒绝失败");
     } finally {
       setBusy(false);
     }
@@ -560,13 +620,53 @@ export function AssetPackWizard(props: {
           {!showBootSpinner && step === 3 && packId && (
             <div className="space-y-4">
               <p className="text-sm text-stone-600">
-                为每张图选择类型与关联产品，保存后点击「通过」标记审核。提交前至少需要 1 张已通过的
-                packshot。
+                为每张图选择类型与关联产品，保存后点击「通过」或使用下方批量操作。提交前至少需要 1
+                张已通过的 packshot。
               </p>
               {assets.length === 0 ? (
                 <p className="text-sm text-stone-500">暂无素材，请返回上一步上传。</p>
               ) : (
-                <ul className="space-y-4">
+                <>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-stone-200 bg-stone-50/80 px-3 py-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllPending}
+                      disabled={busy}
+                    >
+                      全选待审核
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearSelection}
+                      disabled={busy}
+                    >
+                      清除选择
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void bulkApproveSelected()}
+                      disabled={busy || selectedPendingIds.length === 0}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      批量通过（{selectedPendingIds.length}）
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void bulkRejectSelected()}
+                      disabled={busy || selectedPendingIds.length === 0}
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      批量拒绝
+                    </Button>
+                  </div>
+                  <ul className="space-y-4">
                   {assets.map((a) => {
                     const tag = localTags[a.id] || {
                       type: a.type,
@@ -577,6 +677,23 @@ export function AssetPackWizard(props: {
                         key={a.id}
                         className="flex gap-3 rounded-xl border border-stone-200 p-3"
                       >
+                        {a.approval_status === "pending" ? (
+                          <label className="flex shrink-0 cursor-pointer items-start pt-1">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 h-4 w-4 rounded border-stone-300"
+                              checked={Boolean(assetSelection[a.id])}
+                              onChange={() =>
+                                setAssetSelection((s) => ({
+                                  ...s,
+                                  [a.id]: !s[a.id],
+                                }))
+                              }
+                            />
+                          </label>
+                        ) : (
+                          <span className="w-4 shrink-0" />
+                        )}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={a.storage_url}
@@ -669,7 +786,8 @@ export function AssetPackWizard(props: {
                       </li>
                     );
                   })}
-                </ul>
+                  </ul>
+                </>
               )}
               <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-4">
                 <Button

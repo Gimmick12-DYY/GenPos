@@ -67,3 +67,14 @@ class AssetPatch(BaseSchema):
 
 class AssetRejectRequest(BaseSchema):
     reason: str = Field(default="", max_length=512)
+
+
+class AssetBulkIdsRequest(BaseSchema):
+    """BL-304: approve or reject up to 50 pending assets in one request."""
+
+    asset_ids: list[UUID] = Field(..., min_length=1, max_length=50)
+
+
+class AssetBulkRejectRequest(BaseSchema):
+    asset_ids: list[UUID] = Field(..., min_length=1, max_length=50)
+    reason: str = Field(default="", max_length=512)
