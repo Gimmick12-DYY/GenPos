@@ -19,6 +19,7 @@ from src.schemas import (
     AssetResponse,
 )
 from src.services import asset_service
+from src.services.image_upload_normalize import normalize_image_upload
 
 router = APIRouter()
 
@@ -125,17 +126,26 @@ async def upload_asset(
 ):
     """Upload an asset to a pack via S3-compatible storage."""
     merchant_id = resolve_merchant_id(None, token_payload)
-    contents = await file.read()
-    checksum = hashlib.sha256(contents).hexdigest()
+    raw = await file.read()
+    normalized = normalize_image_upload(raw, asset_type)
+    if normalized:
+        contents, content_type, width, height = normalized
+        ext = "png" if "png" in content_type else "jpg"
+        upload_name = f"upload.{ext}"
+    else:
+        contents = raw
+        content_type = file.content_type or "application/octet-stream"
+        width, height = _image_dimensions(contents)
+        upload_name = file.filename or "upload.bin"
 
-    width, height = _image_dimensions(contents)
+    checksum = hashlib.sha256(contents).hexdigest()
 
     file_url = await storage.upload_file(
         file_content=contents,
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type,
         merchant_id=str(merchant_id),
         asset_pack_id=str(pack_id),
-        original_filename=file.filename or "upload.bin",
+        original_filename=upload_name,
     )
 
     return await asset_service.add_asset_to_pack(

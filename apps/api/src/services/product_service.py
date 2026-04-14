@@ -22,12 +22,28 @@ async def get_product(db: AsyncSession, product_id: UUID) -> Product | None:
     return await db.get(Product, product_id)
 
 
-async def update_product(
-    db: AsyncSession, product_id: UUID, data: ProductUpdate
+async def require_product_for_merchant(
+    db: AsyncSession, product_id: UUID, merchant_id: UUID
 ) -> Product:
-    product = await db.get(Product, product_id)
-    if product is None:
+    product = await get_product(db, product_id)
+    if product is None or product.merchant_id != merchant_id:
         raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+async def update_product(
+    db: AsyncSession,
+    product_id: UUID,
+    data: ProductUpdate,
+    *,
+    merchant_id: UUID | None = None,
+) -> Product:
+    if merchant_id is not None:
+        product = await require_product_for_merchant(db, product_id, merchant_id)
+    else:
+        product = await db.get(Product, product_id)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not found")
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(product, field, value)

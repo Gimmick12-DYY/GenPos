@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Package, Plus, Pencil, Loader2, X, Search, Upload } from "lucide-react";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -196,23 +197,34 @@ export default function ProductsPage() {
           {filtered.map((product) => (
             <Card key={product.id} className="transition-shadow hover:shadow-md">
               <CardContent className="flex items-center gap-4 py-5">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-stone-100 to-stone-200">
-                  <Package className="h-7 w-7 text-stone-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-semibold text-stone-900">
-                    {product.name}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-stone-500">{product.category}</p>
-                  {product.description && (
-                    <p className="mt-1.5 line-clamp-2 text-xs text-stone-400">
-                      {product.description}
-                    </p>
-                  )}
-                </div>
+                <Link
+                  href={`/products/${product.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-4"
+                >
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-stone-100 to-stone-200">
+                    <Package className="h-7 w-7 text-stone-400" />
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <h3 className="truncate text-sm font-semibold text-stone-900">
+                      {product.name}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-stone-500">{product.category}</p>
+                    {product.description && (
+                      <p className="mt-1.5 line-clamp-2 text-xs text-stone-400">
+                        {product.description}
+                      </p>
+                    )}
+                    <span className="mt-2 inline-block text-xs font-medium text-primary">
+                      查看详情与素材 →
+                    </span>
+                  </div>
+                </Link>
                 <button
                   type="button"
-                  onClick={() => openEdit(product)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openEdit(product);
+                  }}
                   className="shrink-0 rounded-lg p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
                   title="编辑"
                 >

@@ -173,6 +173,47 @@ async def list_assets(
     return items, total
 
 
+async def list_assets_by_product(
+    db: AsyncSession,
+    merchant_id: UUID,
+    product_id: UUID,
+    *,
+    pack_status: str | None,
+    limit: int,
+    offset: int,
+) -> tuple[list[Asset], int]:
+    """Assets linked to a product, scoped to packs owned by the merchant."""
+    prod = await db.get(Product, product_id)
+    if prod is None or prod.merchant_id != merchant_id:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    filters = [
+        Asset.product_id == product_id,
+        AssetPack.merchant_id == merchant_id,
+    ]
+    if pack_status:
+        filters.append(AssetPack.status == pack_status)
+
+    count_stmt = (
+        select(func.count())
+        .select_from(Asset)
+        .join(AssetPack, Asset.asset_pack_id == AssetPack.id)
+        .where(*filters)
+    )
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    items_stmt = (
+        select(Asset)
+        .join(AssetPack, Asset.asset_pack_id == AssetPack.id)
+        .where(*filters)
+        .order_by(Asset.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    items = list((await db.execute(items_stmt)).scalars().all())
+    return items, total
+
+
 async def patch_asset(
     db: AsyncSession,
     merchant_id: UUID,
