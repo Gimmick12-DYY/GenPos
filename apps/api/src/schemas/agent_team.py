@@ -6,13 +6,13 @@ from uuid import UUID
 
 from pydantic import Field
 
-from .common import BaseSchema, PaginatedResponse
+from .common import BaseSchema
 from .persona import PersonaResponse
-
 
 # ---------------------------------------------------------------------------
 # Agent Roles
 # ---------------------------------------------------------------------------
+
 
 class AgentRoleResponse(BaseSchema):
     id: UUID
@@ -26,6 +26,7 @@ class AgentRoleResponse(BaseSchema):
 # ---------------------------------------------------------------------------
 # Agent Teams
 # ---------------------------------------------------------------------------
+
 
 class AgentTeamCreate(BaseSchema):
     merchant_id: UUID | None = None
@@ -53,6 +54,7 @@ class AgentTeamResponse(BaseSchema):
 # Agent Team Members
 # ---------------------------------------------------------------------------
 
+
 class AgentTeamMemberCreate(BaseSchema):
     role_id: UUID
     persona_id: UUID
@@ -76,6 +78,7 @@ class AgentTeamMemberResponse(BaseSchema):
 # Detail (composite)
 # ---------------------------------------------------------------------------
 
+
 class AgentTeamDetailResponse(AgentTeamResponse):
     members: list[AgentTeamMemberResponse] = []
 
@@ -83,6 +86,7 @@ class AgentTeamDetailResponse(AgentTeamResponse):
 # ---------------------------------------------------------------------------
 # Experiments
 # ---------------------------------------------------------------------------
+
 
 class ExperimentCreate(BaseSchema):
     experiment_name: str = Field(..., min_length=1, max_length=255)

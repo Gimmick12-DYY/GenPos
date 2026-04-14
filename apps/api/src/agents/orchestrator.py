@@ -181,17 +181,13 @@ class GenerationOrchestrator:
                         ctx.product_description = product.description or ""
 
             # Step 2 — Strategy Planner
-            planner_result = await self._run_agent_task(
-                db, job.id, self.planner, ctx, "strategy", "strategy_planner"
-            )
+            planner_result = await self._run_agent_task(db, job.id, self.planner, ctx, "strategy", "strategy_planner")
             pipeline_log.append({"agent": "strategy_planner", "success": planner_result.success})
             if not planner_result.success:
                 return await self._fail_job(db, job, pipeline_log, planner_result.error or "Planner failed")
 
             # Step 3 — Note Writer then Visual Designer (sequential: shared session cannot flush concurrently)
-            writer_result = await self._run_agent_task(
-                db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer"
-            )
+            writer_result = await self._run_agent_task(db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer")
             designer_result = await self._run_agent_task(
                 db, job.id, self.designer, ctx, "image_gen", "cartoon_visual_designer"
             )
@@ -211,9 +207,7 @@ class GenerationOrchestrator:
             # Step 5 — Persist note package (requires product_id)
             note_package_data: dict = {}
             if product_id:
-                note_package = await self._persist_note_package(
-                    db, ctx, job.id, merchant_id, product_id
-                )
+                note_package = await self._persist_note_package(db, ctx, job.id, merchant_id, product_id)
                 note_package_data = {"note_package_id": str(note_package.id)}
 
             # Step 6 — Mark job complete
@@ -304,17 +298,13 @@ class GenerationOrchestrator:
 
         try:
             # Planner
-            planner_result = await self._run_agent_task(
-                db, job.id, self.planner, ctx, "strategy", "strategy_planner"
-            )
+            planner_result = await self._run_agent_task(db, job.id, self.planner, ctx, "strategy", "strategy_planner")
             pipeline_log.append({"agent": "strategy_planner", "success": planner_result.success})
             if not planner_result.success:
                 return await self._fail_job(db, job, pipeline_log, planner_result.error or "Planner failed")
 
             # Sequential like run_on_demand: writer + designer share the same AsyncSession.
-            writer_result = await self._run_agent_task(
-                db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer"
-            )
+            writer_result = await self._run_agent_task(db, job.id, self.writer, ctx, "text_gen", "xhs_note_writer")
             designer_result = await self._run_agent_task(
                 db, job.id, self.designer, ctx, "image_gen", "cartoon_visual_designer"
             )
@@ -366,9 +356,7 @@ class GenerationOrchestrator:
         ctx = AgentContext(merchant_id=merchant_id, product_id=product_id)
         ctx.user_message = user_message
 
-        ctx.product_catalog = await product_catalog_service.load_active_product_catalog(
-            db, merchant_id
-        )
+        ctx.product_catalog = await product_catalog_service.load_active_product_catalog(db, merchant_id)
 
         if session_id is not None:
             msgs = await chat_service.list_messages(
@@ -377,9 +365,7 @@ class GenerationOrchestrator:
                 session_id=session_id,
                 limit=32,
             )
-            ctx.conversation_history = [
-                {"role": m.role, "content": m.content} for m in msgs
-            ]
+            ctx.conversation_history = [{"role": m.role, "content": m.content} for m in msgs]
 
         merchant = await db.get(Merchant, merchant_id)
         if merchant:
@@ -503,36 +489,44 @@ class GenerationOrchestrator:
 
         for i, title in enumerate(note.get("title_variants", []), 1):
             text = title.get("title", title) if isinstance(title, dict) else str(title)
-            db.add(TextAsset(
-                note_package_id=package.id,
-                asset_role="title",
-                content=text,
-                version=i,
-            ))
+            db.add(
+                TextAsset(
+                    note_package_id=package.id,
+                    asset_role="title",
+                    content=text,
+                    version=i,
+                )
+            )
 
         for i, body in enumerate(note.get("body_variants", []), 1):
             body_text = body.get("body", body) if isinstance(body, dict) else str(body)
-            db.add(TextAsset(
-                note_package_id=package.id,
-                asset_role="body",
-                content=body_text,
-                version=i,
-            ))
+            db.add(
+                TextAsset(
+                    note_package_id=package.id,
+                    asset_role="body",
+                    content=body_text,
+                    version=i,
+                )
+            )
 
         first_comment = note.get("first_comment", "")
         if first_comment:
-            db.add(TextAsset(
-                note_package_id=package.id,
-                asset_role="first_comment",
-                content=first_comment,
-            ))
+            db.add(
+                TextAsset(
+                    note_package_id=package.id,
+                    asset_role="first_comment",
+                    content=first_comment,
+                )
+            )
 
         for tag in note.get("hashtags", []):
-            db.add(TextAsset(
-                note_package_id=package.id,
-                asset_role="hashtag",
-                content=tag,
-            ))
+            db.add(
+                TextAsset(
+                    note_package_id=package.id,
+                    asset_role="hashtag",
+                    content=tag,
+                )
+            )
 
         for cover_text in note.get("cover_text_suggestions", []):
             text = cover_text
@@ -540,33 +534,39 @@ class GenerationOrchestrator:
                 main = cover_text.get("main_text", "")
                 sub = cover_text.get("sub_text", "")
                 text = f"{main} | {sub}" if sub else main
-            db.add(TextAsset(
-                note_package_id=package.id,
-                asset_role="cover_text",
-                content=text,
-            ))
+            db.add(
+                TextAsset(
+                    note_package_id=package.id,
+                    asset_role="cover_text",
+                    content=text,
+                )
+            )
 
         # --- Image Assets (briefs only — actual images generated later) ---
         visual = ctx.visual_assets or {}
 
         cover_brief = visual.get("cover_brief", {})
         if cover_brief:
-            db.add(ImageAsset(
-                note_package_id=package.id,
-                asset_role="cover",
-                prompt_version="v1",
-                image_url="",
-                metadata_json=cover_brief,
-            ))
+            db.add(
+                ImageAsset(
+                    note_package_id=package.id,
+                    asset_role="cover",
+                    prompt_version="v1",
+                    image_url="",
+                    metadata_json=cover_brief,
+                )
+            )
 
         for i, carousel_brief in enumerate(visual.get("carousel_briefs", []), 1):
-            db.add(ImageAsset(
-                note_package_id=package.id,
-                asset_role=f"carousel_{i}",
-                prompt_version="v1",
-                image_url="",
-                metadata_json=carousel_brief,
-            ))
+            db.add(
+                ImageAsset(
+                    note_package_id=package.id,
+                    asset_role=f"carousel_{i}",
+                    prompt_version="v1",
+                    image_url="",
+                    metadata_json=carousel_brief,
+                )
+            )
 
         await db.flush()
         await self._hydrate_image_assets(
@@ -607,11 +607,7 @@ class GenerationOrchestrator:
             if (ia.image_url or "").strip():
                 continue
             meta = ia.metadata_json if isinstance(ia.metadata_json, dict) else {}
-            size = (
-                settings.image_gen_size_cover
-                if ia.asset_role == "cover"
-                else settings.image_gen_size_carousel
-            )
+            size = settings.image_gen_size_cover if ia.asset_role == "cover" else settings.image_gen_size_carousel
             prompt, neg = image_generation_service.prompt_from_brief(meta, ia.asset_role)
             if product_name and product_name.strip():
                 pn = product_name.strip()

@@ -33,7 +33,9 @@ def prompt_from_brief(metadata: dict | None, asset_role: str) -> tuple[str, str 
             "Cute flat vector illustration showcasing a consumer product, "
             "warm lighting, Xiaohongshu aesthetic, no text in image."
         )
-    role_hint = "Hero cover shot, vertical composition." if asset_role == "cover" else "Carousel slide, square composition."
+    role_hint = (
+        "Hero cover shot, vertical composition." if asset_role == "cover" else "Carousel slide, square composition."
+    )
     if role_hint.lower() not in primary.lower():
         primary = f"{role_hint} {primary}"
 

@@ -38,9 +38,7 @@ async def list_personas(
 
     total = (await db.execute(count_base)).scalar_one()
 
-    items_stmt = (
-        base.order_by(Persona.created_at.desc()).limit(limit).offset(offset)
-    )
+    items_stmt = base.order_by(Persona.created_at.desc()).limit(limit).offset(offset)
     items = list((await db.execute(items_stmt)).scalars().all())
 
     return items, total
@@ -50,9 +48,7 @@ async def get_persona(db: AsyncSession, persona_id: UUID) -> Persona | None:
     return await db.get(Persona, persona_id)
 
 
-async def update_persona(
-    db: AsyncSession, persona_id: UUID, data: PersonaUpdate
-) -> Persona:
+async def update_persona(db: AsyncSession, persona_id: UUID, data: PersonaUpdate) -> Persona:
     persona = await db.get(Persona, persona_id)
     if persona is None:
         raise HTTPException(status_code=404, detail="Persona not found")

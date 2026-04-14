@@ -18,13 +18,9 @@ class AgentRole(UUIDPrimaryKeyMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     required_output_schema: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_required_default: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    team_members: Mapped[list[AgentTeamMember]] = relationship(
-        "AgentTeamMember", back_populates="role"
-    )
+    team_members: Mapped[list[AgentTeamMember]] = relationship("AgentTeamMember", back_populates="role")
 
     def __repr__(self) -> str:
         return f"<AgentRole {self.role_key!r}>"
@@ -51,9 +47,7 @@ class AgentTeam(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     experiments: Mapped[list[PersonaExperiment]] = relationship(
         "PersonaExperiment", back_populates="team", cascade="all, delete-orphan"
     )
-    generation_jobs: Mapped[list[GenerationJob]] = relationship(
-        "GenerationJob", back_populates="team"
-    )
+    generation_jobs: Mapped[list[GenerationJob]] = relationship("GenerationJob", back_populates="team")
 
     def __repr__(self) -> str:
         return f"<AgentTeam {self.team_name!r} v={self.version}>"
@@ -61,9 +55,7 @@ class AgentTeam(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class AgentTeamMember(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "agent_team_members"
-    __table_args__ = (
-        UniqueConstraint("team_id", "role_id", name="uq_team_role"),
-    )
+    __table_args__ = (UniqueConstraint("team_id", "role_id", name="uq_team_role"),)
 
     team_id: Mapped[_uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -76,9 +68,7 @@ class AgentTeamMember(UUIDPrimaryKeyMixin, Base):
     )
     is_required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     ordering: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     team: Mapped[AgentTeam] = relationship("AgentTeam", back_populates="members")
     role: Mapped[AgentRole] = relationship("AgentRole", back_populates="team_members")
@@ -90,9 +80,7 @@ class AgentTeamMember(UUIDPrimaryKeyMixin, Base):
 
 class AgentCollaborationEdge(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "agent_collaboration_edges"
-    __table_args__ = (
-        CheckConstraint("from_role_id != to_role_id", name="ck_no_self_edge"),
-    )
+    __table_args__ = (CheckConstraint("from_role_id != to_role_id", name="ck_no_self_edge"),)
 
     team_id: Mapped[_uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True
@@ -105,9 +93,7 @@ class AgentCollaborationEdge(UUIDPrimaryKeyMixin, Base):
     )
     edge_type: Mapped[str] = mapped_column(String(24), nullable=False)
     rule_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     team: Mapped[AgentTeam] = relationship("AgentTeam", back_populates="collaboration_edges")
 
@@ -125,9 +111,7 @@ class PersonaExperiment(UUIDPrimaryKeyMixin, Base):
     hypothesis: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="draft", nullable=False)
     result_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     team: Mapped[AgentTeam] = relationship("AgentTeam", back_populates="experiments")

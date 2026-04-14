@@ -24,6 +24,7 @@ def shanghai_day_utc_bounds(for_day: date | None) -> tuple[datetime, datetime]:
     end_local = start_local + timedelta(days=1)
     return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
+
 AUTO_APPROVE_SCORE_THRESHOLD = 0.85
 AUTO_APPROVE_COMPLIANCE_STATUSES = ("passed", "review_needed")
 
@@ -107,21 +108,16 @@ async def process_auto_approve(
     score and compliance thresholds. Returns count of auto-approved packages.
     """
     rules = (
-        await db.execute(
-            select(MerchantRules).where(MerchantRules.merchant_id == merchant_id)
-        )
+        await db.execute(select(MerchantRules).where(MerchantRules.merchant_id == merchant_id))
     ).scalar_one_or_none()
     if not rules or rules.review_mode != "auto":
         return 0
 
-    stmt = (
-        select(NotePackage)
-        .where(
-            NotePackage.merchant_id == merchant_id,
-            NotePackage.review_status == "pending",
-            NotePackage.compliance_status.in_(AUTO_APPROVE_COMPLIANCE_STATUSES),
-            NotePackage.ranking_score >= score_threshold,
-        )
+    stmt = select(NotePackage).where(
+        NotePackage.merchant_id == merchant_id,
+        NotePackage.review_status == "pending",
+        NotePackage.compliance_status.in_(AUTO_APPROVE_COMPLIANCE_STATUSES),
+        NotePackage.ranking_score >= score_threshold,
     )
     packages = list((await db.execute(stmt)).scalars().all())
     for pkg in packages:

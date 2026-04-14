@@ -123,9 +123,7 @@ async def run_daily_batch(
     # Run products sequentially to avoid DB conflicts; each product can have multiple packages
     for product in products:
         for _ in range(packages_per_product):
-            out = await orchestrator.run_daily_product(
-                db, merchant_id=merchant_id, product_id=product.id
-            )
+            out = await orchestrator.run_daily_product(db, merchant_id=merchant_id, product_id=product.id)
             if out.get("note_package_id"):
                 packages_created += 1
                 details.append({"product_id": str(product.id), "note_package_id": out["note_package_id"]})

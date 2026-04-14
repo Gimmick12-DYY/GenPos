@@ -106,9 +106,7 @@ async def activate_asset_pack(
     """Activate pack from pending_review (archives prior active pack for same quarter)."""
     sub = token.get("sub")
     actor = str(sub) if sub is not None else None
-    return await asset_service.activate_asset_pack(
-        db, merchant_id, pack_id, actor_sub=actor
-    )
+    return await asset_service.activate_asset_pack(db, merchant_id, pack_id, actor_sub=actor)
 
 
 @router.post(
@@ -184,9 +182,7 @@ async def patch_pack_asset(
     db: AsyncSession = Depends(get_db),
 ):
     """Tag asset type / product while pack is draft."""
-    return await asset_service.patch_asset(
-        db, merchant_id, pack_id, asset_id, body
-    )
+    return await asset_service.patch_asset(db, merchant_id, pack_id, asset_id, body)
 
 
 @router.post("/{pack_id}/assets/{asset_id}/approve", response_model=AssetResponse)
@@ -200,9 +196,7 @@ async def approve_pack_asset(
     """Approve a pending asset (BL-304; RBAC roles deferred)."""
     sub = token.get("sub")
     actor = str(sub) if sub is not None else None
-    return await asset_service.approve_asset(
-        db, merchant_id, pack_id, asset_id, actor
-    )
+    return await asset_service.approve_asset(db, merchant_id, pack_id, asset_id, actor)
 
 
 @router.post("/{pack_id}/assets/{asset_id}/reject", response_model=AssetResponse)
@@ -217,6 +211,4 @@ async def reject_pack_asset(
     """Reject a pending asset with optional reason."""
     sub = token.get("sub")
     actor = str(sub) if sub is not None else None
-    return await asset_service.reject_asset(
-        db, merchant_id, pack_id, asset_id, body.reason, actor
-    )
+    return await asset_service.reject_asset(db, merchant_id, pack_id, asset_id, body.reason, actor)

@@ -12,20 +12,14 @@ from .base import Base, UUIDPrimaryKeyMixin
 
 class PromptVersion(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "prompt_versions"
-    __table_args__ = (
-        UniqueConstraint("prompt_family", "version", name="uq_prompt_family_version"),
-    )
+    __table_args__ = (UniqueConstraint("prompt_family", "version", name="uq_prompt_family_version"),)
 
     prompt_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     template: Mapped[str] = mapped_column(Text, nullable=False)
     variables: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(16), default="draft", nullable=False, index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    status: Mapped[str] = mapped_column(String(16), default="draft", nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     def __repr__(self) -> str:
         return f"<PromptVersion family={self.prompt_family!r} v={self.version}>"
@@ -41,9 +35,7 @@ class PolicyRule(UUIDPrimaryKeyMixin, Base):
     rule_type: Mapped[str] = mapped_column(String(48), nullable=False, index=True)
     rule_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     merchant: Mapped[Merchant | None] = relationship("Merchant", back_populates="policy_rules")
 

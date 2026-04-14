@@ -67,8 +67,7 @@ class FounderCopilotAgent(BaseAgent):
         base = super()._build_system_prompt(ctx)
         if ctx.product_catalog:
             return (
-                base
-                + "\n\n## 产品库约束\n"
+                base + "\n\n## 产品库约束\n"
                 "你已收到「本商户产品库」全文（见用户消息）。生成笔记时必须使用其中的 product_id。"
             )
         return base

@@ -12,6 +12,7 @@ from .common import BaseSchema, PaginatedResponse
 # Asset Packs
 # ---------------------------------------------------------------------------
 
+
 class AssetPackCreate(BaseSchema):
     merchant_id: UUID | None = None
     quarter_label: str = Field(..., max_length=16)
@@ -34,6 +35,7 @@ class AssetPackResponse(BaseSchema):
 # ---------------------------------------------------------------------------
 # Assets
 # ---------------------------------------------------------------------------
+
 
 class AssetResponse(BaseSchema):
     id: UUID

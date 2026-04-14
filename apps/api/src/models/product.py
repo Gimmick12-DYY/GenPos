@@ -17,9 +17,7 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     category: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    status: Mapped[str] = mapped_column(
-        String(16), default="active", nullable=False, index=True
-    )
+    status: Mapped[str] = mapped_column(String(16), default="active", nullable=False, index=True)
     primary_objective: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -27,9 +25,7 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     note_packages: Mapped[list[NotePackage]] = relationship(
         "NotePackage", back_populates="product", cascade="all, delete-orphan"
     )
-    assets: Mapped[list[Asset]] = relationship(
-        "Asset", back_populates="product", cascade="all, delete-orphan"
-    )
+    assets: Mapped[list[Asset]] = relationship("Asset", back_populates="product", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Product {self.name!r} id={self.id}>"
@@ -38,6 +34,6 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .asset import Asset
     from .merchant import Merchant
     from .note_package import NotePackage
-    from .asset import Asset

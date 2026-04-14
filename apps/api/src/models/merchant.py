@@ -23,9 +23,7 @@ class Merchant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     rules: Mapped[MerchantRules | None] = relationship(
         "MerchantRules", back_populates="merchant", uselist=False, cascade="all, delete-orphan"
     )
-    products: Mapped[list[Product]] = relationship(
-        "Product", back_populates="merchant", cascade="all, delete-orphan"
-    )
+    products: Mapped[list[Product]] = relationship("Product", back_populates="merchant", cascade="all, delete-orphan")
     asset_packs: Mapped[list[AssetPack]] = relationship(
         "AssetPack", back_populates="merchant", cascade="all, delete-orphan"
     )
@@ -59,12 +57,8 @@ class MerchantRules(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     banned_words: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     required_claims: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     banned_claims: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    compliance_level: Mapped[str] = mapped_column(
-        String(16), default="standard", nullable=False
-    )
-    review_mode: Mapped[str] = mapped_column(
-        String(16), default="all", nullable=False
-    )
+    compliance_level: Mapped[str] = mapped_column(String(16), default="standard", nullable=False)
+    review_mode: Mapped[str] = mapped_column(String(16), default="all", nullable=False)
 
     merchant: Mapped[Merchant] = relationship("Merchant", back_populates="rules")
 

@@ -54,10 +54,7 @@ async def export_note_bundle(db: AsyncSession, package_id: UUID) -> dict:
         "style_family": pkg.style_family,
         "text": _extract_text_map(pkg),
         "images": _extract_image_list(pkg),
-        "briefs": [
-            {"type": b.brief_type, "content": b.content_json}
-            for b in pkg.briefs
-        ],
+        "briefs": [{"type": b.brief_type, "content": b.content_json} for b in pkg.briefs],
     }
 
 

@@ -22,9 +22,7 @@ async def get_product(db: AsyncSession, product_id: UUID) -> Product | None:
     return await db.get(Product, product_id)
 
 
-async def require_product_for_merchant(
-    db: AsyncSession, product_id: UUID, merchant_id: UUID
-) -> Product:
+async def require_product_for_merchant(db: AsyncSession, product_id: UUID, merchant_id: UUID) -> Product:
     product = await get_product(db, product_id)
     if product is None or product.merchant_id != merchant_id:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -53,14 +51,8 @@ async def update_product(
     return product
 
 
-async def list_products(
-    db: AsyncSession, merchant_id: UUID, limit: int, offset: int
-) -> tuple[list[Product], int]:
-    count_stmt = (
-        select(func.count())
-        .select_from(Product)
-        .where(Product.merchant_id == merchant_id)
-    )
+async def list_products(db: AsyncSession, merchant_id: UUID, limit: int, offset: int) -> tuple[list[Product], int]:
+    count_stmt = select(func.count()).select_from(Product).where(Product.merchant_id == merchant_id)
     total = (await db.execute(count_stmt)).scalar_one()
 
     items_stmt = (

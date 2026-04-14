@@ -36,9 +36,7 @@ def normalize_image_upload(raw: bytes, asset_type: str) -> tuple[bytes, str, int
             nh = max(1, int(h * scale))
             im = im.resize((nw, nh), Image.Resampling.LANCZOS)
 
-        has_alpha = im.mode in ("RGBA", "LA") or (
-            im.mode == "P" and "transparency" in im.info
-        )
+        has_alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
         preserve_png = asset_type == "cutout" or has_alpha
 
         buf = io.BytesIO()

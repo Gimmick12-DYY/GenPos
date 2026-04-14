@@ -39,9 +39,7 @@ async def clear_chat_session(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete all messages for this chat session (server-side history)."""
-    deleted = await chat_service.delete_session_messages(
-        db, merchant_id=merchant_id, session_id=session_id
-    )
+    deleted = await chat_service.delete_session_messages(db, merchant_id=merchant_id, session_id=session_id)
     return ChatSessionClearResponse(deleted=deleted)
 
 
@@ -53,9 +51,7 @@ async def list_chat_messages(
     db: AsyncSession = Depends(get_db),
 ):
     """BL-101: paginated chat history for a session."""
-    rows = await chat_service.list_messages(
-        db, merchant_id=merchant_id, session_id=session_id, limit=limit
-    )
+    rows = await chat_service.list_messages(db, merchant_id=merchant_id, session_id=session_id, limit=limit)
     return [
         ChatHistoryMessage(
             id=r.id,
@@ -139,9 +135,7 @@ async def _chat_stream_events(body: ChatStreamRequest, token: dict) -> AsyncIter
             role="user",
             content=body.message,
         )
-        catalog = await product_catalog_service.load_active_product_catalog(
-            db, merchant_uuid
-        )
+        catalog = await product_catalog_service.load_active_product_catalog(db, merchant_uuid)
         catalog_block = product_catalog_service.format_catalog_text_for_prompt(catalog)
 
     yield f"data: {json.dumps({'type': 'start'}, ensure_ascii=False)}\n\n"

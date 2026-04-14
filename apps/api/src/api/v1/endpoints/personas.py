@@ -40,9 +40,7 @@ async def list_personas(
 ):
     """List personas for the current tenant."""
     active_only = active if active is not None else True
-    items, total = await persona_service.list_personas(
-        db, limit=limit, offset=offset, active_only=active_only
-    )
+    items, total = await persona_service.list_personas(db, limit=limit, offset=offset, active_only=active_only)
     return PersonaListResponse(items=items, total=total, limit=limit, offset=offset)
 
 

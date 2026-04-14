@@ -164,7 +164,7 @@ def _parse_json_from_content(content: str) -> dict | None:
         if s.startswith(marker):
             s = s[len(marker) :].strip()
         if s.endswith("```"):
-            s = s[: -3].strip()
+            s = s[:-3].strip()
     try:
         return json.loads(s)
     except json.JSONDecodeError:

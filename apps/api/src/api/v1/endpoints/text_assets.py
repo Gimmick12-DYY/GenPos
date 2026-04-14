@@ -27,7 +27,5 @@ async def patch_text_asset(
 ):
     """BL-110: inline edit of generated text (titles, body, hashtags, …)."""
     merchant_id = _merchant_uuid(token)
-    ta = await note_package_service.patch_text_asset(
-        db, text_asset_id, merchant_id, body
-    )
+    ta = await note_package_service.patch_text_asset(db, text_asset_id, merchant_id, body)
     return ta

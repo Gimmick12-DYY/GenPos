@@ -52,9 +52,7 @@ def image_assets_for_api(pkg: NotePackage) -> list[ImageAssetResponse]:
     ]
 
 
-def detail_with_client_image_urls(
-    pkg: NotePackage, base: NotePackageDetailResponse
-) -> NotePackageDetailResponse:
+def detail_with_client_image_urls(pkg: NotePackage, base: NotePackageDetailResponse) -> NotePackageDetailResponse:
     row = note_package_to_response(pkg)
     return base.model_copy(
         update={
@@ -73,15 +71,11 @@ def note_package_to_response(pkg: NotePackage) -> NotePackageResponse:
     return row.model_copy(update={"product_name": pname, "cover_url": cover})
 
 
-async def get_note_package(
-    db: AsyncSession, package_id: UUID
-) -> NotePackage | None:
+async def get_note_package(db: AsyncSession, package_id: UUID) -> NotePackage | None:
     return await db.get(NotePackage, package_id)
 
 
-async def get_note_package_detail(
-    db: AsyncSession, package_id: UUID
-) -> NotePackage | None:
+async def get_note_package_detail(db: AsyncSession, package_id: UUID) -> NotePackage | None:
     stmt = (
         select(NotePackage)
         .where(NotePackage.id == package_id)
@@ -144,9 +138,7 @@ async def list_note_packages(
     return items, total
 
 
-async def create_note_package(
-    db: AsyncSession, data: NotePackageCreate
-) -> NotePackage:
+async def create_note_package(db: AsyncSession, data: NotePackageCreate) -> NotePackage:
     payload = data.model_dump(exclude={"text_assets", "image_assets"})
     pkg = NotePackage(**payload)
     db.add(pkg)

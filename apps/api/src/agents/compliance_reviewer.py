@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from .base import AgentContext, AgentResult, BaseAgent
 
 _SYSTEM_PROMPT = """\
@@ -139,9 +137,7 @@ class ComplianceReviewerAgent(BaseAgent):
 
         valid_statuses = {"passed", "failed", "review_needed"}
         if content.get("status") not in valid_statuses:
-            self._logger.warning(
-                "Invalid compliance status: %s", content.get("status")
-            )
+            self._logger.warning("Invalid compliance status: %s", content.get("status"))
             content["status"] = "review_needed"
 
         ctx.compliance_report = content

@@ -10,6 +10,7 @@ from .common import BaseSchema, PaginatedResponse
 # Note Package
 # ---------------------------------------------------------------------------
 
+
 class NotePackageResponse(BaseSchema):
     id: UUID
     merchant_id: UUID
@@ -82,6 +83,7 @@ class TextAssetPatch(BaseSchema):
 # Text Assets
 # ---------------------------------------------------------------------------
 
+
 class TextAssetResponse(BaseSchema):
     id: UUID
     note_package_id: UUID
@@ -96,12 +98,11 @@ class TextAssetResponse(BaseSchema):
 # Image Assets
 # ---------------------------------------------------------------------------
 
+
 class ImageAssetResponse(BaseSchema):
     id: UUID
     note_package_id: UUID
-    asset_role: Literal[
-        "cover", "carousel_1", "carousel_2", "carousel_3", "carousel_4", "carousel_5"
-    ]
+    asset_role: Literal["cover", "carousel_1", "carousel_2", "carousel_3", "carousel_4", "carousel_5"]
     source_asset_id: UUID | None
     derived_from: str | None
     prompt_version: str | None
@@ -114,6 +115,7 @@ class ImageAssetResponse(BaseSchema):
 # Briefs
 # ---------------------------------------------------------------------------
 
+
 class BriefResponse(BaseSchema):
     id: UUID
     note_package_id: UUID
@@ -125,6 +127,7 @@ class BriefResponse(BaseSchema):
 # ---------------------------------------------------------------------------
 # Detail (composite)
 # ---------------------------------------------------------------------------
+
 
 class NotePackageDetailResponse(NotePackageResponse):
     text_assets: list[TextAssetResponse] = []

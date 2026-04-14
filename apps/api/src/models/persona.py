@@ -25,12 +25,8 @@ class Persona(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     constraints: Mapped[list[PersonaConstraint]] = relationship(
         "PersonaConstraint", back_populates="persona", cascade="all, delete-orphan"
     )
-    team_members: Mapped[list[AgentTeamMember]] = relationship(
-        "AgentTeamMember", back_populates="persona"
-    )
-    generation_tasks: Mapped[list[GenerationTask]] = relationship(
-        "GenerationTask", back_populates="persona"
-    )
+    team_members: Mapped[list[AgentTeamMember]] = relationship("AgentTeamMember", back_populates="persona")
+    generation_tasks: Mapped[list[GenerationTask]] = relationship("GenerationTask", back_populates="persona")
 
     def __repr__(self) -> str:
         return f"<Persona {self.name!r} v={self.version}>"
@@ -44,9 +40,7 @@ class PersonaConstraint(UUIDPrimaryKeyMixin, Base):
     )
     constraint_type: Mapped[str] = mapped_column(String(64), nullable=False)
     constraint_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     persona: Mapped[Persona] = relationship("Persona", back_populates="constraints")
 

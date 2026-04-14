@@ -19,25 +19,25 @@ def _parse_metrics_csv(content: bytes) -> list[dict]:
     rows = []
     for row in reader:
         try:
-            rows.append({
-                "note_package_id": UUID(row["note_package_id"]),
-                "date": date.fromisoformat(row["date"]),
-                "impressions": int(row.get("impressions", 0) or 0),
-                "clicks": int(row.get("clicks", 0) or 0),
-                "saves": int(row.get("saves", 0) or 0),
-                "comments": int(row.get("comments", 0) or 0),
-                "cost": float(row.get("cost", 0) or 0),
-                "conversions": int(row.get("conversions", 0) or 0),
-                "revenue": float(row.get("revenue", 0) or 0),
-            })
+            rows.append(
+                {
+                    "note_package_id": UUID(row["note_package_id"]),
+                    "date": date.fromisoformat(row["date"]),
+                    "impressions": int(row.get("impressions", 0) or 0),
+                    "clicks": int(row.get("clicks", 0) or 0),
+                    "saves": int(row.get("saves", 0) or 0),
+                    "comments": int(row.get("comments", 0) or 0),
+                    "cost": float(row.get("cost", 0) or 0),
+                    "conversions": int(row.get("conversions", 0) or 0),
+                    "revenue": float(row.get("revenue", 0) or 0),
+                }
+            )
         except (ValueError, KeyError):
             continue
     return rows
 
 
-async def ingest_metrics(
-    db: AsyncSession, data: MetricsIngestRequest
-) -> PerformanceMetrics:
+async def ingest_metrics(db: AsyncSession, data: MetricsIngestRequest) -> PerformanceMetrics:
     pkg = await db.get(NotePackage, data.note_package_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="Note package not found")
@@ -90,9 +90,7 @@ async def ingest_metrics_batch(
     return MetricsBatchIngestResponse(created=created, updated=updated, skipped=skipped)
 
 
-async def ingest_metrics_csv(
-    db: AsyncSession, content: bytes
-) -> dict[str, int]:
+async def ingest_metrics_csv(db: AsyncSession, content: bytes) -> dict[str, int]:
     """
     Parse CSV and upsert performance metrics. CSV must have headers:
     note_package_id,date,impressions,clicks,saves,comments,cost,conversions,revenue
@@ -127,18 +125,10 @@ async def get_product_performance(db: AsyncSession, product_id: UUID) -> dict:
 
     agg_stmt = (
         select(
-            func.coalesce(func.sum(PerformanceMetrics.impressions), 0).label(
-                "total_impressions"
-            ),
-            func.coalesce(func.sum(PerformanceMetrics.clicks), 0).label(
-                "total_clicks"
-            ),
-            func.coalesce(func.sum(PerformanceMetrics.saves), 0).label(
-                "total_saves"
-            ),
-            func.coalesce(func.sum(PerformanceMetrics.conversions), 0).label(
-                "total_conversions"
-            ),
+            func.coalesce(func.sum(PerformanceMetrics.impressions), 0).label("total_impressions"),
+            func.coalesce(func.sum(PerformanceMetrics.clicks), 0).label("total_clicks"),
+            func.coalesce(func.sum(PerformanceMetrics.saves), 0).label("total_saves"),
+            func.coalesce(func.sum(PerformanceMetrics.conversions), 0).label("total_conversions"),
         )
         .select_from(PerformanceMetrics)
         .join(NotePackage, PerformanceMetrics.note_package_id == NotePackage.id)
@@ -164,9 +154,7 @@ async def get_product_performance(db: AsyncSession, product_id: UUID) -> dict:
     }
 
 
-async def get_note_package_performance(
-    db: AsyncSession, package_id: UUID
-) -> list[PerformanceMetrics]:
+async def get_note_package_performance(db: AsyncSession, package_id: UUID) -> list[PerformanceMetrics]:
     pkg = await db.get(NotePackage, package_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="Note package not found")

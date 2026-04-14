@@ -33,9 +33,7 @@ async def get_agent_team(db: AsyncSession, team_id: UUID) -> AgentTeam | None:
     return await db.get(AgentTeam, team_id)
 
 
-async def get_agent_team_detail(
-    db: AsyncSession, team_id: UUID
-) -> AgentTeam | None:
+async def get_agent_team_detail(db: AsyncSession, team_id: UUID) -> AgentTeam | None:
     stmt = (
         select(AgentTeam)
         .where(AgentTeam.id == team_id)
@@ -48,9 +46,7 @@ async def get_agent_team_detail(
     return result.scalar_one_or_none()
 
 
-async def update_agent_team(
-    db: AsyncSession, team_id: UUID, data: AgentTeamUpdate
-) -> AgentTeam:
+async def update_agent_team(db: AsyncSession, team_id: UUID, data: AgentTeamUpdate) -> AgentTeam:
     team = await db.get(AgentTeam, team_id)
     if team is None:
         raise HTTPException(status_code=404, detail="Agent team not found")
@@ -63,9 +59,7 @@ async def update_agent_team(
     return team
 
 
-async def add_team_member(
-    db: AsyncSession, team_id: UUID, data: AgentTeamMemberCreate
-) -> AgentTeamMember:
+async def add_team_member(db: AsyncSession, team_id: UUID, data: AgentTeamMemberCreate) -> AgentTeamMember:
     team = await db.get(AgentTeam, team_id)
     if team is None:
         raise HTTPException(status_code=404, detail="Agent team not found")
@@ -77,9 +71,7 @@ async def add_team_member(
     return member
 
 
-async def remove_team_member(
-    db: AsyncSession, team_id: UUID, member_id: UUID
-) -> None:
+async def remove_team_member(db: AsyncSession, team_id: UUID, member_id: UUID) -> None:
     member = await db.get(AgentTeamMember, member_id)
     if member is None or member.team_id != team_id:
         raise HTTPException(status_code=404, detail="Team member not found")
@@ -93,9 +85,7 @@ async def list_agent_roles(db: AsyncSession) -> list[AgentRole]:
     return list((await db.execute(stmt)).scalars().all())
 
 
-async def create_experiment(
-    db: AsyncSession, team_id: UUID, data: ExperimentCreate
-) -> PersonaExperiment:
+async def create_experiment(db: AsyncSession, team_id: UUID, data: ExperimentCreate) -> PersonaExperiment:
     team = await db.get(AgentTeam, team_id)
     if team is None:
         raise HTTPException(status_code=404, detail="Agent team not found")

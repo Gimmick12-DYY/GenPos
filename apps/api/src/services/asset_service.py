@@ -11,18 +11,14 @@ from src.models import Asset, AssetPack, Product
 from src.schemas import AssetPackCreate, AssetPatch
 
 
-async def get_pack_for_merchant(
-    db: AsyncSession, pack_id: UUID, merchant_id: UUID
-) -> AssetPack:
+async def get_pack_for_merchant(db: AsyncSession, pack_id: UUID, merchant_id: UUID) -> AssetPack:
     pack = await db.get(AssetPack, pack_id)
     if pack is None or pack.merchant_id != merchant_id:
         raise HTTPException(status_code=404, detail="Asset pack not found")
     return pack
 
 
-async def create_asset_pack(
-    db: AsyncSession, merchant_id: UUID, data: AssetPackCreate
-) -> AssetPack:
+async def create_asset_pack(db: AsyncSession, merchant_id: UUID, data: AssetPackCreate) -> AssetPack:
     pack = AssetPack(
         merchant_id=merchant_id,
         quarter_label=data.quarter_label,
@@ -55,26 +51,16 @@ async def list_asset_packs(
     count_stmt = select(func.count()).select_from(AssetPack).where(*filters)
     total = (await db.execute(count_stmt)).scalar_one()
 
-    items_stmt = (
-        select(AssetPack)
-        .where(*filters)
-        .order_by(AssetPack.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    items_stmt = select(AssetPack).where(*filters).order_by(AssetPack.created_at.desc()).limit(limit).offset(offset)
     items = list((await db.execute(items_stmt)).scalars().all())
     return items, total
 
 
-def _ranges_overlap(
-    a_from: date, a_to: date, b_from: date, b_to: date
-) -> bool:
+def _ranges_overlap(a_from: date, a_to: date, b_from: date, b_to: date) -> bool:
     return not (a_to < b_from or a_from > b_to)
 
 
-async def _assert_activation_date_no_overlap(
-    db: AsyncSession, pack: AssetPack, exclude_pack_id: UUID
-) -> None:
+async def _assert_activation_date_no_overlap(db: AsyncSession, pack: AssetPack, exclude_pack_id: UUID) -> None:
     if pack.effective_from is None or pack.effective_to is None:
         return
     stmt = select(AssetPack).where(
@@ -86,9 +72,7 @@ async def _assert_activation_date_no_overlap(
     for o in others:
         if o.effective_from is None or o.effective_to is None:
             continue
-        if _ranges_overlap(
-            pack.effective_from, pack.effective_to, o.effective_from, o.effective_to
-        ):
+        if _ranges_overlap(pack.effective_from, pack.effective_to, o.effective_from, o.effective_to):
             raise HTTPException(
                 status_code=400,
                 detail="Effective date range overlaps another active asset pack",
@@ -109,10 +93,14 @@ def _append_pack_activation_audit(pack: AssetPack, actor_sub: str | None) -> Non
 
 
 async def count_approved_packshots(db: AsyncSession, pack_id: UUID) -> int:
-    stmt = select(func.count()).select_from(Asset).where(
-        Asset.asset_pack_id == pack_id,
-        Asset.type == "packshot",
-        Asset.approval_status == "approved",
+    stmt = (
+        select(func.count())
+        .select_from(Asset)
+        .where(
+            Asset.asset_pack_id == pack_id,
+            Asset.type == "packshot",
+            Asset.approval_status == "approved",
+        )
     )
     return int((await db.execute(stmt)).scalar_one() or 0)
 
@@ -151,14 +139,8 @@ async def add_asset_to_pack(
     return asset
 
 
-async def list_assets(
-    db: AsyncSession, pack_id: UUID, limit: int, offset: int
-) -> tuple[list[Asset], int]:
-    count_stmt = (
-        select(func.count())
-        .select_from(Asset)
-        .where(Asset.asset_pack_id == pack_id)
-    )
+async def list_assets(db: AsyncSession, pack_id: UUID, limit: int, offset: int) -> tuple[list[Asset], int]:
+    count_stmt = select(func.count()).select_from(Asset).where(Asset.asset_pack_id == pack_id)
     total = (await db.execute(count_stmt)).scalar_one()
 
     items_stmt = (
@@ -195,10 +177,7 @@ async def list_assets_by_product(
         filters.append(AssetPack.status == pack_status)
 
     count_stmt = (
-        select(func.count())
-        .select_from(Asset)
-        .join(AssetPack, Asset.asset_pack_id == AssetPack.id)
-        .where(*filters)
+        select(func.count()).select_from(Asset).join(AssetPack, Asset.asset_pack_id == AssetPack.id).where(*filters)
     )
     total = (await db.execute(count_stmt)).scalar_one()
 
@@ -312,9 +291,7 @@ async def reject_asset(
     return asset
 
 
-async def submit_asset_pack_for_review(
-    db: AsyncSession, merchant_id: UUID, pack_id: UUID
-) -> AssetPack:
+async def submit_asset_pack_for_review(db: AsyncSession, merchant_id: UUID, pack_id: UUID) -> AssetPack:
     pack = await get_pack_for_merchant(db, pack_id, merchant_id)
     if pack.status != "draft":
         raise HTTPException(

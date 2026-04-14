@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import NotePackage, PerformanceMetrics
 
-
 # Weights for composite score (must sum to 1.0)
 WEIGHT_COMPLIANCE = 0.5
 WEIGHT_ENGAGEMENT = 0.3
@@ -75,11 +74,7 @@ async def compute_composite_scores(
         diversity = 1.0 - (count - 1) / total_packages if total_packages else 0.5
         diversity = max(0, min(1, diversity))
 
-        composite = (
-            WEIGHT_COMPLIANCE * comp
-            + WEIGHT_ENGAGEMENT * eng
-            + WEIGHT_DIVERSITY * diversity
-        )
+        composite = WEIGHT_COMPLIANCE * comp + WEIGHT_ENGAGEMENT * eng + WEIGHT_DIVERSITY * diversity
         composite = round(composite, 4)
         scored.append((pkg.id, composite))
 

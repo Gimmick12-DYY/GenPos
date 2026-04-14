@@ -11,9 +11,7 @@ from src.core.product_catalog_prompt import format_catalog_text_for_prompt
 from src.models import Product
 
 
-async def load_active_product_catalog(
-    db: AsyncSession, merchant_id: UUID
-) -> list[dict]:
+async def load_active_product_catalog(db: AsyncSession, merchant_id: UUID) -> list[dict]:
     """Return active products as plain dicts for prompts and AgentContext."""
     stmt = (
         select(Product)

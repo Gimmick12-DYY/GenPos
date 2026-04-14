@@ -111,14 +111,16 @@ async def get_product_fatigue(
                 else:
                     recommendation = "当前表现正常"
 
-            dimensions.append({
-                "dimension": dimension_col,
-                "value": dim_value or "(未设置)",
-                "fatigue_score": round(fatigue_score, 3),
-                "recent_impressions": imp_7,
-                "baseline_impressions": imp_30,
-                "recommendation": recommendation,
-            })
+            dimensions.append(
+                {
+                    "dimension": dimension_col,
+                    "value": dim_value or "(未设置)",
+                    "fatigue_score": round(fatigue_score, 3),
+                    "recent_impressions": imp_7,
+                    "baseline_impressions": imp_30,
+                    "recommendation": recommendation,
+                }
+            )
 
     return {
         "product_id": str(product_id),

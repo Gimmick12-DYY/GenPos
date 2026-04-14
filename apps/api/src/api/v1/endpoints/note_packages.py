@@ -115,9 +115,7 @@ async def patch_note_package_endpoint(
 ):
     """BL-110: update review_status / ranking_score."""
     merchant_id = UUID(str(token["sub"]))
-    pkg = await note_package_service.patch_note_package(
-        db, package_id, merchant_id, body
-    )
+    pkg = await note_package_service.patch_note_package(db, package_id, merchant_id, body)
     return note_package_service.note_package_to_response(pkg)
 
 

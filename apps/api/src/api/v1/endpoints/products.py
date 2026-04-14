@@ -92,6 +92,4 @@ async def update_product(
 ):
     """Update product."""
     mid = resolve_merchant_id(None, token)
-    return await product_service.update_product(
-        db, product_id, body, merchant_id=mid
-    )
+    return await product_service.update_product(db, product_id, body, merchant_id=mid)

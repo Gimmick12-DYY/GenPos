@@ -22,9 +22,7 @@ async def get_merchant(db: AsyncSession, merchant_id: UUID) -> Merchant | None:
     return await db.get(Merchant, merchant_id)
 
 
-async def update_merchant(
-    db: AsyncSession, merchant_id: UUID, data: MerchantUpdate
-) -> Merchant:
+async def update_merchant(db: AsyncSession, merchant_id: UUID, data: MerchantUpdate) -> Merchant:
     merchant = await db.get(Merchant, merchant_id)
     if merchant is None:
         raise HTTPException(status_code=404, detail="Merchant not found")
@@ -37,17 +35,13 @@ async def update_merchant(
     return merchant
 
 
-async def get_merchant_rules(
-    db: AsyncSession, merchant_id: UUID
-) -> MerchantRules | None:
+async def get_merchant_rules(db: AsyncSession, merchant_id: UUID) -> MerchantRules | None:
     stmt = select(MerchantRules).where(MerchantRules.merchant_id == merchant_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def update_merchant_rules(
-    db: AsyncSession, merchant_id: UUID, data: MerchantRulesUpdate
-) -> MerchantRules:
+async def update_merchant_rules(db: AsyncSession, merchant_id: UUID, data: MerchantRulesUpdate) -> MerchantRules:
     merchant = await db.get(Merchant, merchant_id)
     if merchant is None:
         raise HTTPException(status_code=404, detail="Merchant not found")

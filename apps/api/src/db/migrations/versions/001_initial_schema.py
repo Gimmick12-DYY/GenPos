@@ -5,11 +5,12 @@ Revises: None
 Create Date: 2026-03-13
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSON
+from alembic import op
+from sqlalchemy.dialects.postgresql import JSON, UUID
 
 revision: str = "001"
 down_revision: Union[str, None] = None
@@ -37,7 +38,14 @@ def upgrade() -> None:
     op.create_table(
         "merchant_rules",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, unique=True, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+            index=True,
+        ),
         sa.Column("tone_preset", sa.String(64), nullable=True),
         sa.Column("banned_words", JSON, nullable=True),
         sa.Column("required_claims", JSON, nullable=True),
@@ -52,7 +60,13 @@ def upgrade() -> None:
     op.create_table(
         "products",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("name", sa.String(255), nullable=False, index=True),
         sa.Column("category", sa.String(128), nullable=False, index=True),
         sa.Column("status", sa.String(16), nullable=False, server_default="active"),
@@ -66,7 +80,13 @@ def upgrade() -> None:
     op.create_table(
         "asset_packs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("quarter_label", sa.String(16), nullable=False),
         sa.Column("status", sa.String(24), nullable=False, server_default="draft"),
         sa.Column("effective_from", sa.Date, nullable=True),
@@ -79,8 +99,20 @@ def upgrade() -> None:
     op.create_table(
         "assets",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("asset_pack_id", UUID(as_uuid=True), sa.ForeignKey("asset_packs.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("product_id", UUID(as_uuid=True), sa.ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "asset_pack_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("asset_packs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "product_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("products.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("type", sa.String(24), nullable=False),
         sa.Column("storage_url", sa.Text, nullable=False),
         sa.Column("checksum", sa.String(128), nullable=True),
@@ -111,7 +143,13 @@ def upgrade() -> None:
     op.create_table(
         "persona_constraints",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("persona_id", UUID(as_uuid=True), sa.ForeignKey("personas.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "persona_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("personas.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("constraint_type", sa.String(64), nullable=False),
         sa.Column("constraint_payload", JSON, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -133,7 +171,13 @@ def upgrade() -> None:
     op.create_table(
         "agent_teams",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=True, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("team_name", sa.String(128), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("version", sa.Integer, nullable=False, server_default="1"),
@@ -146,9 +190,27 @@ def upgrade() -> None:
     op.create_table(
         "agent_team_members",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("team_id", UUID(as_uuid=True), sa.ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("role_id", UUID(as_uuid=True), sa.ForeignKey("agent_roles.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("persona_id", UUID(as_uuid=True), sa.ForeignKey("personas.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "team_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("agent_teams.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "role_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("agent_roles.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "persona_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("personas.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("is_required", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("ordering", sa.Integer, nullable=False, server_default="0"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -159,9 +221,19 @@ def upgrade() -> None:
     op.create_table(
         "agent_collaboration_edges",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("team_id", UUID(as_uuid=True), sa.ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("from_role_id", UUID(as_uuid=True), sa.ForeignKey("agent_roles.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("to_role_id", UUID(as_uuid=True), sa.ForeignKey("agent_roles.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "team_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("agent_teams.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "from_role_id", UUID(as_uuid=True), sa.ForeignKey("agent_roles.id", ondelete="CASCADE"), nullable=False
+        ),
+        sa.Column(
+            "to_role_id", UUID(as_uuid=True), sa.ForeignKey("agent_roles.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("edge_type", sa.String(24), nullable=False),
         sa.Column("rule_json", JSON, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -172,7 +244,13 @@ def upgrade() -> None:
     op.create_table(
         "persona_experiments",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("team_id", UUID(as_uuid=True), sa.ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "team_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("agent_teams.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("experiment_name", sa.String(255), nullable=False),
         sa.Column("hypothesis", sa.Text, nullable=True),
         sa.Column("status", sa.String(24), nullable=False, server_default="draft"),
@@ -185,7 +263,13 @@ def upgrade() -> None:
     op.create_table(
         "generation_jobs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("source_mode", sa.String(24), nullable=False),
         sa.Column("trigger_type", sa.String(24), nullable=False),
         sa.Column("status", sa.String(24), nullable=False, server_default="pending"),
@@ -198,7 +282,13 @@ def upgrade() -> None:
     op.create_table(
         "generation_tasks",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("job_id", UUID(as_uuid=True), sa.ForeignKey("generation_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "job_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("generation_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("task_type", sa.String(24), nullable=False),
         sa.Column("input_json", JSON, nullable=True),
         sa.Column("output_json", JSON, nullable=True),
@@ -213,10 +303,29 @@ def upgrade() -> None:
     op.create_table(
         "note_packages",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("product_id", UUID(as_uuid=True), sa.ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True),
-        sa.Column("asset_pack_id", UUID(as_uuid=True), sa.ForeignKey("asset_packs.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("generation_job_id", UUID(as_uuid=True), sa.ForeignKey("generation_jobs.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "product_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("products.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+        sa.Column(
+            "asset_pack_id", UUID(as_uuid=True), sa.ForeignKey("asset_packs.id", ondelete="SET NULL"), nullable=True
+        ),
+        sa.Column(
+            "generation_job_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("generation_jobs.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
         sa.Column("source_mode", sa.String(24), nullable=False),
         sa.Column("objective", sa.String(24), nullable=False, server_default="seeding"),
         sa.Column("persona", sa.String(255), nullable=True),
@@ -232,7 +341,13 @@ def upgrade() -> None:
     op.create_table(
         "text_assets",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("note_package_id", UUID(as_uuid=True), sa.ForeignKey("note_packages.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "note_package_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("note_packages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("asset_role", sa.String(24), nullable=False),
         sa.Column("content", sa.Text, nullable=False),
         sa.Column("language", sa.String(10), nullable=False, server_default="zh-CN"),
@@ -244,9 +359,17 @@ def upgrade() -> None:
     op.create_table(
         "image_assets",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("note_package_id", UUID(as_uuid=True), sa.ForeignKey("note_packages.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "note_package_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("note_packages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("asset_role", sa.String(24), nullable=False),
-        sa.Column("source_asset_id", UUID(as_uuid=True), sa.ForeignKey("assets.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "source_asset_id", UUID(as_uuid=True), sa.ForeignKey("assets.id", ondelete="SET NULL"), nullable=True
+        ),
         sa.Column("derived_from", sa.String(255), nullable=True),
         sa.Column("prompt_version", sa.String(64), nullable=True),
         sa.Column("image_url", sa.Text, nullable=True),
@@ -258,7 +381,13 @@ def upgrade() -> None:
     op.create_table(
         "briefs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("note_package_id", UUID(as_uuid=True), sa.ForeignKey("note_packages.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "note_package_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("note_packages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("brief_type", sa.String(24), nullable=False),
         sa.Column("content_json", JSON, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -268,7 +397,13 @@ def upgrade() -> None:
     op.create_table(
         "performance_metrics",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("note_package_id", UUID(as_uuid=True), sa.ForeignKey("note_packages.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "note_package_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("note_packages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("date", sa.Date, nullable=False),
         sa.Column("impressions", sa.Integer, nullable=False, server_default="0"),
         sa.Column("clicks", sa.Integer, nullable=False, server_default="0"),
@@ -285,7 +420,13 @@ def upgrade() -> None:
     op.create_table(
         "review_events",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("note_package_id", UUID(as_uuid=True), sa.ForeignKey("note_packages.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "note_package_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("note_packages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("reviewer_id", UUID(as_uuid=True), nullable=True),
         sa.Column("action", sa.String(24), nullable=False),
         sa.Column("reason", sa.Text, nullable=True),
@@ -309,7 +450,13 @@ def upgrade() -> None:
     op.create_table(
         "policy_rules",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("merchant_id", UUID(as_uuid=True), sa.ForeignKey("merchants.id", ondelete="CASCADE"), nullable=True, index=True),
+        sa.Column(
+            "merchant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("merchants.id", ondelete="CASCADE"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("scope", sa.String(16), nullable=False),
         sa.Column("rule_type", sa.String(32), nullable=False),
         sa.Column("rule_payload", JSON, nullable=True),
@@ -333,13 +480,28 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     tables = [
-        "policy_rules", "prompt_versions", "review_events", "performance_metrics",
-        "briefs", "image_assets", "text_assets", "note_packages",
-        "generation_tasks", "generation_jobs",
-        "persona_experiments", "agent_collaboration_edges", "agent_team_members",
-        "agent_teams", "agent_roles",
-        "persona_constraints", "personas",
-        "assets", "asset_packs", "products", "merchant_rules", "merchants",
+        "policy_rules",
+        "prompt_versions",
+        "review_events",
+        "performance_metrics",
+        "briefs",
+        "image_assets",
+        "text_assets",
+        "note_packages",
+        "generation_tasks",
+        "generation_jobs",
+        "persona_experiments",
+        "agent_collaboration_edges",
+        "agent_team_members",
+        "agent_teams",
+        "agent_roles",
+        "persona_constraints",
+        "personas",
+        "assets",
+        "asset_packs",
+        "products",
+        "merchant_rules",
+        "merchants",
     ]
     for table in tables:
         op.drop_table(table)

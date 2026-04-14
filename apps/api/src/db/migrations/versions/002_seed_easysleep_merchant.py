@@ -7,6 +7,7 @@ Create Date: 2026-03-13
 Inserts the default merchant and rules so the app works after first deploy
 without calling POST /auth/bootstrap.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

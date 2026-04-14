@@ -29,15 +29,9 @@ class NotePackage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     objective: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     persona: Mapped[str | None] = mapped_column(String(128), nullable=True)
     style_family: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    compliance_status: Mapped[str] = mapped_column(
-        String(24), default="pending", nullable=False, index=True
-    )
-    ranking_score: Mapped[float | None] = mapped_column(
-        Numeric(8, 4), nullable=True, index=True
-    )
-    review_status: Mapped[str] = mapped_column(
-        String(16), default="pending", nullable=False, index=True
-    )
+    compliance_status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False, index=True)
+    ranking_score: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True, index=True)
+    review_status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False, index=True)
 
     merchant: Mapped[Merchant] = relationship("Merchant", back_populates="note_packages")
     product: Mapped[Product] = relationship("Product", back_populates="note_packages")
@@ -49,9 +43,7 @@ class NotePackage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     image_assets: Mapped[list[ImageAsset]] = relationship(
         "ImageAsset", back_populates="note_package", cascade="all, delete-orphan"
     )
-    briefs: Mapped[list[Brief]] = relationship(
-        "Brief", back_populates="note_package", cascade="all, delete-orphan"
-    )
+    briefs: Mapped[list[Brief]] = relationship("Brief", back_populates="note_package", cascade="all, delete-orphan")
     performance_metrics: Mapped[list[PerformanceMetrics]] = relationship(
         "PerformanceMetrics", back_populates="note_package", cascade="all, delete-orphan"
     )
@@ -73,9 +65,7 @@ class TextAsset(UUIDPrimaryKeyMixin, Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(String(10), default="zh-CN", nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     note_package: Mapped[NotePackage] = relationship("NotePackage", back_populates="text_assets")
 
@@ -97,9 +87,7 @@ class ImageAsset(UUIDPrimaryKeyMixin, Base):
     prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     image_url: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     note_package: Mapped[NotePackage] = relationship("NotePackage", back_populates="image_assets")
     source_asset: Mapped[Asset | None] = relationship("Asset", back_populates="image_assets")
@@ -116,9 +104,7 @@ class Brief(UUIDPrimaryKeyMixin, Base):
     )
     brief_type: Mapped[str] = mapped_column(String(32), nullable=False)
     content_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     note_package: Mapped[NotePackage] = relationship("NotePackage", back_populates="briefs")
 
@@ -129,8 +115,8 @@ class Brief(UUIDPrimaryKeyMixin, Base):
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .analytics import PerformanceMetrics, ReviewEvent
+    from .asset import Asset, AssetPack
+    from .generation import GenerationJob
     from .merchant import Merchant
     from .product import Product
-    from .asset import AssetPack, Asset
-    from .generation import GenerationJob
-    from .analytics import PerformanceMetrics, ReviewEvent

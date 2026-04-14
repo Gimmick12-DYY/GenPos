@@ -8,10 +8,10 @@ from pydantic import Field
 
 from .common import BaseSchema
 
-
 # ---------------------------------------------------------------------------
 # Merchant
 # ---------------------------------------------------------------------------
+
 
 class MerchantCreate(BaseSchema):
     name: str = Field(..., min_length=1, max_length=255)
@@ -49,6 +49,7 @@ class MerchantResponse(BaseSchema):
 # ---------------------------------------------------------------------------
 # Merchant Rules
 # ---------------------------------------------------------------------------
+
 
 class MerchantRulesUpdate(BaseSchema):
     tone_preset: str | None = Field(default=None, max_length=128)

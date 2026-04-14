@@ -4,6 +4,8 @@ line-length = 120
 [lint]
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]
+# TYPE_CHECKING imports follow class bodies in ORM modules to avoid import cycles.
+per-file-ignores = { "src/models/agent_team.py" = ["E402"], "src/models/analytics.py" = ["E402"], "src/models/generation.py" = ["E402"], "src/models/merchant.py" = ["E402"], "src/models/note_package.py" = ["E402"], "src/models/persona.py" = ["E402"], "src/models/product.py" = ["E402"], "src/models/prompt.py" = ["E402"] }
 
 [format]
 quote-style = "double"

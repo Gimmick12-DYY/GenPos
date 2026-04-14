@@ -75,9 +75,7 @@ async def get_dev_token(
         merchant = row
         merchant_uuid = merchant.id
 
-    token = create_access_token(
-        data={"sub": str(merchant_uuid), "merchant_id": str(merchant_uuid)}
-    )
+    token = create_access_token(data={"sub": str(merchant_uuid), "merchant_id": str(merchant_uuid)})
     from src.core.config import settings
 
     return DevTokenResponse(

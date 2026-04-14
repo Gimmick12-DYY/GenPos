@@ -46,9 +46,7 @@ async def get_review_queue(
     db: AsyncSession = Depends(get_db),
 ):
     """Get review queue for a merchant (note packages pending review, ranked by score)."""
-    items, total = await review_service.get_review_queue(
-        db, merchant_id=merchant_id, limit=limit, offset=offset
-    )
+    items, total = await review_service.get_review_queue(db, merchant_id=merchant_id, limit=limit, offset=offset)
     out = await _note_packages_with_fatigue(db, items)
     return ReviewQueueResponse(items=out, total=total, limit=limit, offset=offset)
 
@@ -83,9 +81,7 @@ async def hydrate_missing_review_images(
     db: AsyncSession = Depends(get_db),
 ):
     """Backfill PNGs for pending packages that have image rows but empty image_url."""
-    items, _ = await review_service.get_review_queue(
-        db, merchant_id=merchant_id, limit=200, offset=0
-    )
+    items, _ = await review_service.get_review_queue(db, merchant_id=merchant_id, limit=200, offset=0)
     processed = 0
     for p in items:
         if note_package_service.pick_cover_url(p) is not None:
